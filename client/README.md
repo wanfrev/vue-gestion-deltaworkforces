@@ -1,5 +1,37 @@
-# Vue 3 + TypeScript + Vite
+# Frontend Nómina (Modo Local)
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Este cliente ya incluye el flujo base de empleado con datos estáticos:
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+- Login UI (acepta cualquier correo + contraseña no vacíos)
+- Dashboard con 4 recibos de pago mock
+- Vista en pantalla del recibo
+- Descarga PDF temporal con `window.print()`
+
+## Ejecutar en local
+
+```bash
+npm install
+npm run dev
+```
+
+## Build de producción
+
+```bash
+npm run build
+```
+
+## Activar API real después (Railway)
+
+En `src/App.vue` cambia:
+
+```js
+const USE_LOCAL_MOCK = true
+```
+
+a:
+
+```js
+const USE_LOCAL_MOCK = false
+```
+
+Con eso el frontend deja de usar `src/mockData.js` y empieza a consultar `GET /api/recibos`.
