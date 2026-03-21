@@ -1,21 +1,25 @@
 import { ref } from 'vue'
 import { getMisRecibos, getReciboPdf } from '../api/payroll'
 import { recibosMock } from '../mock-data'
+import { useAuthStore } from '../store/auth'
 import type { Recibo } from '../types/payroll'
 
 const USE_LOCAL_MOCK = import.meta.env.VITE_USE_LOCAL_MOCK === 'true'
 
 export const usePayroll = () => {
+  const authStore = useAuthStore()
   const recibos = ref<Recibo[]>([])
   const reciboSeleccionado = ref<Recibo | null>(null)
   const loading = ref(false)
   const errorMessage = ref('')
 
+  const isMockSession = () => USE_LOCAL_MOCK || authStore.token === 'mock-token'
+
   const cargarRecibos = async () => {
     loading.value = true
     errorMessage.value = ''
 
-    if (USE_LOCAL_MOCK) {
+    if (isMockSession()) {
       recibos.value = recibosMock
       loading.value = false
       return
@@ -40,7 +44,7 @@ export const usePayroll = () => {
   }
 
   const descargarPdf = async (recibo: Recibo) => {
-    if (USE_LOCAL_MOCK) {
+    if (isMockSession()) {
       return false
     }
 

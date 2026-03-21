@@ -20,7 +20,9 @@ export const useAuth = () => {
     loading.value = true
     errorMessage.value = ''
 
-    if (USE_LOCAL_MOCK) {
+    // Permitir acceso rápido en desarrollo usando la contraseña "1234",
+    // o cuando VITE_USE_LOCAL_MOCK esté activo.
+    if (USE_LOCAL_MOCK || (import.meta.env.DEV && credentials.password === '1234')) {
       authStore.setSession({
         token: 'mock-token',
         user: {
