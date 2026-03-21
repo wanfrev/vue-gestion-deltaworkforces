@@ -1,4 +1,6 @@
-export const recibosMock = [
+import type { Recibo } from './types/payroll'
+
+export const recibosMock: Recibo[] = [
   {
     id: 1,
     fecha_pago: '2026-03-15',
