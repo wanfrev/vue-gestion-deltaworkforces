@@ -1,8 +1,10 @@
+import type { Role } from '../../constants/roles'
+
 declare global {
   namespace Express {
     interface UserPayload {
       id: number
-      rol: string
+      rol: Role
     }
 
     interface Request {

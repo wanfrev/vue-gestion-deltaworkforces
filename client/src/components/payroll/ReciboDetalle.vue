@@ -19,12 +19,12 @@
           <p class="font-semibold text-delta-text">Datos del empleado</p>
           <p class="text-gray-600"><span class="font-medium">Nombre:</span> {{ nombreEmpleado }}</p>
           <p class="text-gray-600"><span class="font-medium">ID:</span> {{ idEmpleado }}</p>
-          <p class="text-gray-600"><span class="font-medium">Departamento:</span> Operaciones</p>
+          <p class="text-gray-600"><span class="font-medium">Cargo:</span> {{ cargoEmpleado }}</p>
         </div>
         <div class="space-y-1">
           <p class="font-semibold text-delta-text">Periodo de pago</p>
           <p class="text-gray-600"><span class="font-medium">Periodo:</span> {{ recibo.periodo }}</p>
-          <p class="text-gray-600"><span class="font-medium">Rango:</span> {{ recibo.detalles.periodo_pago }}</p>
+          <p class="text-gray-600"><span class="font-medium">Rango:</span> {{ periodoPago }}</p>
           <p class="text-gray-600">
             <span class="font-medium">Estatus:</span>
             <span class="ml-1 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold" :class="statusClass">
@@ -41,11 +41,11 @@
         <div class="space-y-2 text-sm text-gray-700">
           <div class="flex justify-between">
             <span>Horas regulares</span>
-            <span>{{ recibo.detalles.horas_regulares }}</span>
+            <span>{{ horasRegulares }}</span>
           </div>
           <div class="flex justify-between">
             <span>Pago por hora</span>
-            <span>${{ formatCurrency(recibo.detalles.pago_hora) }}</span>
+            <span>${{ formatCurrency(pagoHora) }}</span>
           </div>
           <div class="flex justify-between">
             <span>Ingreso base</span>
@@ -53,7 +53,7 @@
           </div>
           <div class="flex justify-between font-semibold text-green-700">
             <span>Bonos</span>
-            <span>+ ${{ formatCurrency(recibo.detalles.bonos) }}</span>
+            <span>+ ${{ formatCurrency(bonos) }}</span>
           </div>
         </div>
       </div>
@@ -63,7 +63,7 @@
         <div class="space-y-2 text-sm text-gray-700">
           <div class="flex justify-between">
             <span>Impuestos y retenciones</span>
-            <span class="font-semibold text-red-600">- ${{ formatCurrency(recibo.detalles.deducciones) }}</span>
+            <span class="font-semibold text-red-600">- ${{ formatCurrency(deducciones) }}</span>
           </div>
           <div class="flex justify-between">
             <span>Seguro y prestaciones</span>
@@ -71,7 +71,7 @@
           </div>
           <div class="mt-4 flex justify-between border-t border-gray-200 pt-2 font-semibold text-delta-text">
             <span>Total deducciones</span>
-            <span>${{ formatCurrency(recibo.detalles.deducciones) }}</span>
+            <span>${{ formatCurrency(deducciones) }}</span>
           </div>
         </div>
       </div>
@@ -90,7 +90,7 @@
     </section>
 
     <footer class="flex flex-col gap-3 px-6 pb-6 print:hidden sm:flex-row sm:px-8 sm:pb-8">
-      <DeltaButton class="w-full sm:w-auto" variant="secondary" @click="$emit('back')">Volver al dashboard</DeltaButton>
+      <DeltaButton class="w-full sm:w-auto" variant="secondary" @click="$emit('back')">Volver</DeltaButton>
       <DeltaButton class="w-full py-3 text-base sm:w-auto sm:min-w-56" @click="$emit('print')">
         <span class="inline-flex items-center gap-1">
           <span aria-hidden="true">⬇</span>
@@ -119,11 +119,18 @@ defineEmits<{
 
 const authStore = useAuthStore()
 
-const nombreEmpleado = computed(() => authStore.user?.nombre || 'Empleado Delta')
-const idEmpleado = computed(() => authStore.user?.id?.toString() || 'N/D')
+const nombreEmpleado = computed(() => props.recibo.User?.nombre || props.recibo.empleadoNombre || authStore.user?.nombre || 'Empleado Delta')
+const idEmpleado = computed(() => props.recibo.User?.id?.toString() || authStore.user?.id?.toString() || 'N/D')
+const cargoEmpleado = computed(() => String(props.recibo.detalles?.cargo || 'No especificado'))
 
-const ingresoBase = computed(() => props.recibo.detalles.horas_regulares * props.recibo.detalles.pago_hora)
-const totalIngresos = computed(() => ingresoBase.value + props.recibo.detalles.bonos)
+const horasRegulares = computed(() => Number(props.recibo.detalles?.horas_regulares || 0))
+const pagoHora = computed(() => Number(props.recibo.detalles?.pago_hora || 0))
+const bonos = computed(() => Number(props.recibo.detalles?.bonos || 0))
+const deducciones = computed(() => Number(props.recibo.detalles?.deducciones || 0))
+const periodoPago = computed(() => String(props.recibo.detalles?.periodo_pago || props.recibo.periodo || 'No especificado'))
+
+const ingresoBase = computed(() => horasRegulares.value * pagoHora.value)
+const totalIngresos = computed(() => ingresoBase.value + bonos.value)
 
 const statusClass = computed(() => {
   const status = (props.recibo.estado || '').trim().toLowerCase()

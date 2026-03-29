@@ -69,7 +69,7 @@ const ultimoRecibo = computed(() => props.recibos?.[0] ?? null)
 
 const formatCurrency = (value: number) => Number(value).toFixed(2)
 
-const getStatusClass = (estado: string) => {
+const getStatusClass = (estado?: string) => {
   const status = (estado || '').trim().toLowerCase()
 
   if (status === 'en procesamiento') {

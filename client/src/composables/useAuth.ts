@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { loginRequest } from '../api/auth'
 import { useAuthStore } from '../store/auth'
+import router from '../router'
 import type { LoginCredentials } from '../types/auth'
 
 const USE_LOCAL_MOCK = import.meta.env.VITE_USE_LOCAL_MOCK === 'true'
@@ -50,6 +51,7 @@ export const useAuth = () => {
 
   const logout = () => {
     authStore.clearSession()
+    router.replace('/')
   }
 
   return {

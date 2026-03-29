@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/auth'
 import LoginView from '../views/Login.vue'
 import DashboardView from '../views/Dashboard.vue'
 import AdminView from '../views/Admin.vue'
+import { resolveHomeByRole, ROLES } from '../constants/roles'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -16,13 +17,13 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: DashboardView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, roles: [ROLES.EMPLEADO] },
     },
     {
       path: '/admin',
       name: 'admin',
       component: AdminView,
-      meta: { requiresAuth: true, role: 'admin' },
+      meta: { requiresAuth: true, roles: [ROLES.ADMIN] },
     },
   ],
 })
@@ -30,18 +31,20 @@ const router = createRouter({
 router.beforeEach((to) => {
   const authStore = useAuthStore()
   const requiresAuth = to.meta.requiresAuth === true
-  const requiredRole = typeof to.meta.role === 'string' ? to.meta.role : undefined
+  const requiredRoles = Array.isArray(to.meta.roles) ? to.meta.roles : undefined
+  const userRole = authStore.user?.rol
+  const homeByRole = resolveHomeByRole(userRole)
 
   if (to.path === '/' && authStore.isAuthenticated) {
-    return '/dashboard'
+    return homeByRole
   }
 
   if (requiresAuth && !authStore.isAuthenticated) {
     return '/'
   }
 
-  if (requiredRole && authStore.user?.rol !== requiredRole) {
-    return '/dashboard'
+  if (requiredRoles && (!userRole || !requiredRoles.includes(userRole))) {
+    return homeByRole
   }
 
   return true

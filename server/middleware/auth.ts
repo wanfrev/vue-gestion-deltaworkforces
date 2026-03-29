@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express'
 import jwt, { JwtPayload } from 'jsonwebtoken'
+import { isRole, type Role } from '../constants/roles'
 
 const auth = (req: Request, res: Response, next: NextFunction) => {
   const token = req.header('Authorization')?.split(' ')[1]
@@ -15,9 +16,9 @@ const auth = (req: Request, res: Response, next: NextFunction) => {
       return res.status(400).json({ msg: 'Token no válido.' })
     }
 
-    const payload = decoded as JwtPayload & { id?: number; rol?: string }
+    const payload = decoded as JwtPayload & { id?: number; rol?: Role }
 
-    if (!payload.id || !payload.rol) {
+    if (!Number.isInteger(payload.id) || (payload.id as number) <= 0 || !isRole(payload.rol)) {
       return res.status(400).json({ msg: 'Token no válido.' })
     }
 
