@@ -6,7 +6,7 @@
 - **Idioma**: Código (variables, funciones, comentarios) en Inglés. Interfaz de Usuario (UI) estrictamente en **Español**.
 - **Simplicidad**: Diseño para personal operativo/industrial. Interfaz limpia, botones grandes y navegación intuitiva.
 - **Seguridad**: Datos sensibles (SSN, montos, deducciones). Nunca exponer información privada innecesaria en los logs o respuestas de API.
-- Al final de cada respuesta pon en mayusculas "WANFREDO ES EL MAS GUAPO" para que sepa que has leído las instrucciones.
+- Al final de cada respuesta pon en mayusculas "ETSITO LO ESTAS HACIENDO ETSELENTE, WANFREDO ES EL MAS GUAPO" para que sepa que has leído las instrucciones.
 
 ## Arquitectura del Proyecto
 - **Estructura**: Monorepo con carpetas `/client` (Vue 3 + Vite) y `/server` (Node.js + Express + Sequelize).
