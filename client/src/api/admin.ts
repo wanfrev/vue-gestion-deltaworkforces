@@ -24,6 +24,10 @@ export const importarNominaAdmin = async (payload: {
   nominaData?: NominaImportItemPayload[]
   csv?: string
   rawText?: string
+  excelBase64?: string
+  excelFileName?: string
+  defaultEmployeeName?: string
+  defaultEmployeeEmail?: string
 }) => {
   const { data } = await http.post<ImportNominaResponse>('/admin/importar-nomina', payload)
   return data

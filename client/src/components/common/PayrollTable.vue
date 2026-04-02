@@ -1,63 +1,133 @@
 <template>
-  <section
-    v-if="ultimoRecibo"
-    class="mb-6 rounded-2xl border border-delta-blue/20 bg-white p-5 shadow-sm ring-1 ring-black/5 sm:mb-7 sm:p-6"
-  >
-    <p class="text-sm font-semibold text-gray-500">Resumen rápido</p>
-    <p class="mt-2 text-xl text-gray-700">
-      Tu último pago fue de
-      <span class="text-2xl font-bold text-green-700">${{ formatCurrency(ultimoRecibo.monto) }}</span>
-      el día {{ ultimoRecibo.fecha_pago }}.
-    </p>
-    <DeltaButton class="mt-5 w-full sm:w-auto" @click="$emit('download-latest', ultimoRecibo)">
-      <span class="inline-flex items-center gap-1">
-        <span aria-hidden="true">⬇</span>
-        <span>Descargar Último PDF</span>
-      </span>
-    </DeltaButton>
-  </section>
-
-  <p v-if="loading" class="rounded-lg bg-white p-4 text-sm text-gray-500 shadow-sm">Cargando recibos...</p>
-
-  <div v-else class="grid gap-5 sm:gap-6">
-    <div
-      v-for="recibo in recibos"
-      :key="recibo.id"
-      class="flex flex-col gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm ring-1 ring-black/5 sm:flex-row sm:items-center sm:justify-between sm:p-7"
-    >
-      <div class="space-y-1">
-        <p class="text-xs uppercase tracking-wide text-gray-500">{{ recibo.periodo }}</p>
-        <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold" :class="getStatusClass(recibo.estado)">
-          {{ recibo.estado || 'Pagado' }}
-        </span>
-        <p class="text-lg font-semibold text-gray-700">Pago del {{ recibo.fecha_pago }}</p>
-        <p class="mt-1 text-2xl font-bold text-green-700">${{ formatCurrency(recibo.monto) }}</p>
+  <template v-if="loading">
+    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-black/5">
+      <div class="hidden grid-cols-[1.6fr_1fr_0.9fr_auto] gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3 md:grid">
+        <div class="h-3 w-28 animate-pulse rounded bg-slate-200"></div>
+        <div class="h-3 w-20 animate-pulse rounded bg-slate-200"></div>
+        <div class="mx-auto h-3 w-20 animate-pulse rounded bg-slate-200"></div>
+        <div class="ml-auto h-3 w-16 animate-pulse rounded bg-slate-200"></div>
       </div>
 
-      <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-        <DeltaButton class="w-full sm:w-auto" variant="secondary" @click="$emit('view-details', recibo)">
-          Ver en pantalla
-        </DeltaButton>
-        <DeltaButton class="w-full sm:w-auto" @click="$emit('download-pdf', recibo)">
-          <span class="inline-flex items-center gap-1">
-            <span aria-hidden="true">⬇</span>
-            <span>Descargar PDF</span>
-          </span>
-        </DeltaButton>
+      <div v-for="index in 4" :key="`skeleton-${index}`" class="border-b border-slate-100 px-4 py-4 last:border-b-0 sm:px-5 md:py-3.5">
+        <div class="grid gap-4 md:grid-cols-[1.6fr_1fr_0.9fr_auto] md:items-center md:gap-3">
+          <div class="space-y-2">
+            <div class="h-3 w-36 animate-pulse rounded bg-slate-200"></div>
+            <div class="h-3 w-28 animate-pulse rounded bg-slate-200"></div>
+          </div>
+          <div class="h-6 w-20 animate-pulse rounded bg-slate-200 md:mx-auto"></div>
+          <div class="h-6 w-24 animate-pulse rounded-full bg-slate-200"></div>
+          <div class="flex gap-2 md:justify-end">
+            <div class="h-8 w-8 animate-pulse rounded-full bg-slate-200"></div>
+            <div class="h-8 w-8 animate-pulse rounded-full bg-slate-200"></div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
+    </section>
+  </template>
+
+  <template v-else>
+    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-black/5">
+      <div class="hidden grid-cols-[1.6fr_1fr_0.9fr_auto] gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 md:grid">
+        <p>Periodo</p>
+        <p class="text-center">Monto neto</p>
+        <p>Estado</p>
+        <p class="text-right">Acciones</p>
+      </div>
+
+      <div v-for="recibo in recibos" :key="recibo.id" class="border-b border-slate-100 last:border-b-0">
+        <div
+          class="grid gap-4 px-4 py-4 transition-transform duration-200 hover:-translate-y-1 hover:bg-slate-50 sm:px-5 md:grid-cols-[1.6fr_1fr_0.9fr_auto] md:items-center md:gap-3 md:py-3.5"
+        >
+          <div class="flex items-start gap-2.5">
+            <span class="mt-0.5 text-slate-400">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="17" rx="2"></rect>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 2.5V6M16 2.5V6M3 9h18"></path>
+              </svg>
+            </span>
+            <div>
+              <p class="text-sm font-semibold text-slate-700">{{ recibo.periodo }}</p>
+              <p class="mt-0.5 text-xs text-gray-500">{{ formatPeriodoRango(recibo.fecha_pago) }}</p>
+            </div>
+          </div>
+
+          <p class="text-left text-lg font-bold text-slate-800 md:text-center">${{ formatCurrency(recibo.monto) }}</p>
+
+          <div class="md:justify-self-start">
+            <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold" :class="getStatusClass(recibo.estado)">
+              {{ getStatusLabel(recibo.estado) }}
+            </span>
+          </div>
+
+          <div class="flex flex-wrap gap-2 md:justify-end">
+            <button
+              type="button"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-delta-blue/40 hover:text-delta-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-delta-blue/30"
+              :aria-label="`Ver detalle del recibo ${recibo.id}`"
+              @click="$emit('view-details', recibo)"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.1 12.4a1 1 0 0 1 0-.7C3.2 8.8 7 4.6 12 4.6s8.8 4.2 9.9 7.1a1 1 0 0 1 0 .7c-1.1 2.9-4.9 7.1-9.9 7.1S3.2 15.3 2.1 12.4Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-delta-blue/40 hover:text-delta-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-delta-blue/30 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="isDownloading(recibo.id)"
+              :aria-label="`Descargar recibo ${recibo.id}`"
+              @click="$emit('download-pdf', recibo)"
+            >
+              <svg
+                v-if="isDownloading(recibo.id)"
+                class="h-4 w-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3"></circle>
+                <path class="opacity-90" fill="currentColor" d="M21 12a9 9 0 0 0-9-9v3a6 6 0 0 1 6 6h3Z"></path>
+              </svg>
+              <svg
+                v-else
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.9"
+                aria-hidden="true"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0 4-4m-4 4-4-4" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 17.5v.5A2 2 0 0 0 6 20h12a2 2 0 0 0 2-2v-.5" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <p
+        v-if="!recibos.length"
+        class="px-5 py-8 text-center text-sm text-slate-500"
+      >
+        No hay recibos disponibles por el momento.
+      </p>
+    </section>
+  </template>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import type { Recibo } from '../../types/payroll'
-import DeltaButton from './DeltaButton.vue'
 
-const props = defineProps<{
-  recibos: Recibo[]
-  loading: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    recibos: Recibo[]
+    loading: boolean
+    downloadingReciboId?: number | null
+  }>(),
+  {
+    downloadingReciboId: null,
+  },
+)
 
 defineEmits<{
   'view-details': [recibo: Recibo]
@@ -65,21 +135,53 @@ defineEmits<{
   'download-latest': [recibo: Recibo]
 }>()
 
-const ultimoRecibo = computed(() => props.recibos?.[0] ?? null)
+const isDownloading = (reciboId: number) => props.downloadingReciboId === reciboId
 
 const formatCurrency = (value: number) => Number(value).toFixed(2)
+
+const formatPeriodoRango = (dateIso: string) => {
+  const date = new Date(`${dateIso}T00:00:00`)
+
+  if (Number.isNaN(date.getTime())) {
+    return dateIso
+  }
+
+  const end = new Date(date)
+  const start = new Date(date)
+  start.setDate(end.getDate() - 6)
+
+  const opts: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short' }
+  const startText = start.toLocaleDateString('es-MX', opts)
+  const endText = end.toLocaleDateString('es-MX', opts)
+
+  return `${startText} - ${endText}`
+}
 
 const getStatusClass = (estado?: string) => {
   const status = (estado || '').trim().toLowerCase()
 
-  if (status === 'en procesamiento') {
-    return 'bg-yellow-100 text-yellow-800'
+  if (status === 'en proceso' || status === 'en procesamiento' || status.includes('proceso')) {
+    return 'bg-amber-100 text-amber-700'
   }
 
   if (status === 'revisar' || status === 'error' || status.includes('error')) {
-    return 'bg-red-100 text-red-800'
+    return 'bg-rose-100 text-rose-700'
   }
 
-  return 'bg-green-100 text-green-800'
+  return 'bg-emerald-100 text-emerald-700'
+}
+
+const getStatusLabel = (estado?: string) => {
+  const status = (estado || '').trim().toLowerCase()
+
+  if (status === 'en procesamiento' || status.includes('proceso')) {
+    return 'En proceso'
+  }
+
+  if (status === 'revisar' || status === 'error' || status.includes('error')) {
+    return 'Requiere revisión'
+  }
+
+  return 'Pagado'
 }
 </script>

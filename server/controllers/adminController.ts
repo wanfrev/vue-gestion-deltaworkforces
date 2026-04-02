@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt'
 import { Request, Response } from 'express'
 import { parse } from 'csv-parse/sync'
 import { Op } from 'sequelize'
+import XLSX from 'xlsx'
 import { Recibo, User, sequelize } from '../models'
 import { ROLES } from '../constants/roles'
 
@@ -46,6 +47,204 @@ const parseNumber = (value: unknown): number => {
 
   const parsed = Number(sanitized)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+const normalizeText = (value: unknown): string => {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+}
+
+const formatDateToISO = (value: unknown): string => {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10)
+  }
+
+  if (typeof value === 'number') {
+    const parsed = XLSX.SSF.parse_date_code(value)
+
+    if (parsed) {
+      const date = new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d))
+      return date.toISOString().slice(0, 10)
+    }
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    const asDate = new Date(value)
+
+    if (!Number.isNaN(asDate.getTime())) {
+      return asDate.toISOString().slice(0, 10)
+    }
+  }
+
+  return ''
+}
+
+const toTitleCase = (value: string): string => {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+    .join(' ')
+}
+
+const buildFallbackEmail = (name: string): string => {
+  const localPart = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '.')
+    .replace(/^\.+|\.+$/g, '')
+
+  return `${localPart || 'empleado'}.temp@delta.local`
+}
+
+const stripExcelDataUriPrefix = (value: string): string => {
+  const marker = 'base64,'
+  const index = value.indexOf(marker)
+
+  if (index === -1) {
+    return value.trim()
+  }
+
+  return value.slice(index + marker.length).trim()
+}
+
+const deriveEmployeeNameFromFileName = (fileName: string): string => {
+  const cleanBase = fileName
+    .replace(/\.[^/.]+$/, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b(paystub|payslip|payroll|nomina|recibo)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return cleanBase ? toTitleCase(cleanBase) : ''
+}
+
+const formatCellValue = (worksheet: XLSX.WorkSheet, row: number, col: number): string => {
+  const cellAddress = XLSX.utils.encode_cell({ r: row, c: col })
+  const cell = worksheet[cellAddress]
+
+  if (!cell || cell.v === undefined || cell.v === null) {
+    return ''
+  }
+
+  if (cell.w && typeof cell.w === 'string') {
+    return cell.w.trim()
+  }
+
+  return String(cell.v).trim()
+}
+
+const formatDateDisplay = (value: unknown): string => {
+  if (typeof value === 'string' && value.trim()) {
+    return value.trim()
+  }
+
+  const iso = formatDateToISO(value)
+
+  if (!iso) {
+    return ''
+  }
+
+  const [year, month, day] = iso.split('-')
+  return `${month}/${day}/${year}`
+}
+
+const getCellValueByAddress = (worksheet: XLSX.WorkSheet, address: string): string => {
+  const decoded = XLSX.utils.decode_cell(address)
+  return formatCellValue(worksheet, decoded.r, decoded.c)
+}
+
+const parseExcelNomina = (
+  excelBase64: string,
+  options?: {
+    defaultEmployeeName?: string
+    defaultEmployeeEmail?: string
+    excelFileName?: string
+  },
+): NominaImportItem[] => {
+  const payload = stripExcelDataUriPrefix(excelBase64)
+  const workbook = XLSX.read(Buffer.from(payload, 'base64'), {
+    type: 'buffer',
+    cellDates: true,
+  })
+
+  const fileNameFallback = deriveEmployeeNameFromFileName(options?.excelFileName ?? '')
+  const defaultEmployeeName =
+    (options?.defaultEmployeeName || '').trim() || fileNameFallback || 'Empleado sin nombre'
+  const defaultEmployeeEmail = (options?.defaultEmployeeEmail || '').trim().toLowerCase()
+
+  const items: NominaImportItem[] = []
+
+  workbook.SheetNames.forEach((sheetName) => {
+    const worksheet = workbook.Sheets[sheetName]
+
+    if (!worksheet) {
+      return
+    }
+
+    const employeeRaw = getCellValueByAddress(worksheet, 'B8')
+    const startDateRaw = getCellValueByAddress(worksheet, 'B11')
+    const endDateRaw = getCellValueByAddress(worksheet, 'D11')
+    const companyRaw = getCellValueByAddress(worksheet, 'B4') || getCellValueByAddress(worksheet, 'B1')
+    const workedHoursRaw = getCellValueByAddress(worksheet, 'B18')
+    const hourlyRateRaw = getCellValueByAddress(worksheet, 'C18')
+    const totalPaidRaw = getCellValueByAddress(worksheet, 'B21')
+
+    const employeeName =
+      employeeRaw && normalizeText(employeeRaw) !== 'employee' ? employeeRaw : defaultEmployeeName
+
+    const startDate = formatDateToISO(startDateRaw)
+    const endDate = formatDateToISO(endDateRaw)
+    const fechaPago = endDate || startDate
+
+    if (!fechaPago) {
+      return
+    }
+
+    const workedHours = parseNumber(workedHoursRaw)
+    const hourlyRate = parseNumber(hourlyRateRaw)
+    const totalPaid = parseNumber(totalPaidRaw)
+    const earningTotal = workedHours * hourlyRate
+    const periodDisplayStart = formatDateDisplay(startDateRaw)
+    const periodDisplayEnd = formatDateDisplay(endDateRaw)
+    const periodDisplay =
+      periodDisplayStart && periodDisplayEnd
+        ? `${periodDisplayStart} - ${periodDisplayEnd}`
+        : periodDisplayEnd || periodDisplayStart || sheetName
+
+    items.push({
+      email: defaultEmployeeEmail || buildFallbackEmail(employeeName),
+      nombre: employeeName,
+      fecha: fechaPago,
+      totalNeto: totalPaid,
+      periodo: startDate && endDate ? `Del ${startDate} al ${endDate}` : sheetName,
+      desglose: {
+        company: companyRaw || 'Empresa no especificada',
+        employee: employeeName,
+        period: periodDisplay,
+        earnings: [
+          {
+            description: 'Worked Hours',
+            quantity: workedHours,
+            rate: hourlyRate,
+            total: earningTotal,
+          },
+        ],
+        total_paid: totalPaid,
+        status: 'Pagado',
+        source_sheet: sheetName,
+        horas_regulares: workedHours,
+        pago_hora: hourlyRate,
+        periodo_pago: periodDisplay,
+      },
+    })
+  })
+
+  return items
 }
 
 const parseJsonSafe = (value: unknown): Record<string, unknown> => {
@@ -245,16 +444,26 @@ const normalizeNominaItem = (item: NominaImportItem): NominaImportItem => {
 
 export const importarNomina = async (req: Request, res: Response) => {
   try {
-    const { nominaData, csv, rawText } = req.body as {
+    const { nominaData, csv, rawText, excelBase64, excelFileName, defaultEmployeeName, defaultEmployeeEmail } = req.body as {
       nominaData?: NominaImportItem[]
       csv?: string
       rawText?: string
+      excelBase64?: string
+      excelFileName?: string
+      defaultEmployeeName?: string
+      defaultEmployeeEmail?: string
     }
 
     let items: NominaImportItem[] = []
 
     if (Array.isArray(nominaData)) {
       items = nominaData
+    } else if (typeof excelBase64 === 'string' && excelBase64.trim()) {
+      items = parseExcelNomina(excelBase64, {
+        defaultEmployeeName,
+        defaultEmployeeEmail,
+        excelFileName,
+      })
     } else if (typeof csv === 'string' && csv.trim()) {
       items = parseCsvNomina(csv)
     } else if (typeof rawText === 'string' && rawText.trim()) {
@@ -274,7 +483,7 @@ export const importarNomina = async (req: Request, res: Response) => {
       }
     } else {
       return res.status(400).json({
-        msg: 'Debes enviar nominaData (array JSON), csv (string) o rawText (texto pegado).',
+        msg: 'Debes enviar nominaData (array JSON), excelBase64 (archivo Excel), csv (string) o rawText (texto pegado).',
       })
     }
 
@@ -324,17 +533,27 @@ export const importarNomina = async (req: Request, res: Response) => {
         })
 
         if (reciboExistente) {
+          const detalles = {
+            ...(item.desglose ?? {}),
+            status: 'Pagado',
+          }
+
           reciboExistente.set('monto', item.totalNeto)
-          reciboExistente.set('detalles', item.desglose ?? {})
+          reciboExistente.set('detalles', detalles)
           await reciboExistente.save({ transaction })
           recibosActualizados += 1
         } else {
+          const detalles = {
+            ...(item.desglose ?? {}),
+            status: 'Pagado',
+          }
+
           await Recibo.create(
             {
               fecha_pago: item.fecha,
               monto: item.totalNeto,
               periodo: item.periodo,
-              detalles: item.desglose ?? {},
+              detalles,
               UserId: user.getDataValue('id'),
             },
             { transaction },
@@ -398,7 +617,17 @@ export const getRecibosAdmin = async (req: Request, res: Response) => {
       limit,
     })
 
-    return res.json(recibos)
+    const payload = recibos.map((recibo) => {
+      const data = recibo.toJSON() as Record<string, unknown>
+      const detalles = (data.detalles as Record<string, unknown> | undefined) ?? {}
+
+      return {
+        ...data,
+        estado: String(detalles.status || 'Pagado'),
+      }
+    })
+
+    return res.json(payload)
   } catch {
     return res.status(500).json({ msg: 'Error al consultar recibos de nómina.' })
   }

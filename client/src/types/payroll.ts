@@ -1,4 +1,15 @@
 export interface ReciboDetalles {
+  company?: string
+  employee?: string
+  period?: string
+  earnings?: Array<{
+    description?: string
+    quantity?: number
+    rate?: number
+    total?: number
+  }>
+  total_paid?: number
+  status?: string
   horas_regulares?: number
   pago_hora?: number
   deducciones?: number

@@ -218,8 +218,32 @@ const toPreviewRecibo = (item: NominaImportItemPayload, index: number): Recibo =
   }
 }
 
+const readFileAsDataUrl = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result)
+        return
+      }
+
+      reject(new Error('No fue posible leer el archivo.'))
+    }
+
+    reader.onerror = () => {
+      reject(new Error('No fue posible leer el archivo.'))
+    }
+
+    reader.readAsDataURL(file)
+  })
+}
+
 export const useAdminPayroll = () => {
   const rawInput = ref('')
+  const selectedExcelFile = ref<File | null>(null)
+  const defaultEmployeeName = ref('')
+  const defaultEmployeeEmail = ref('')
   const search = ref('')
 
   const parsedItems = ref<NominaImportItemPayload[]>([])
@@ -248,6 +272,13 @@ export const useAdminPayroll = () => {
     loadingPreview.value = true
 
     try {
+      if (selectedExcelFile.value) {
+        parsedItems.value = []
+        previewRecibos.value = []
+        successMessage.value = 'Archivo Excel seleccionado. Haz clic en "Importar Nómina de la Semana" para procesarlo.'
+        return
+      }
+
       const text = rawInput.value.trim()
 
       if (!text) {
@@ -282,6 +313,36 @@ export const useAdminPayroll = () => {
 
   const importarNomina = async () => {
     limpiarMensajes()
+
+    const hasExcelFile = Boolean(selectedExcelFile.value)
+
+    if (hasExcelFile && selectedExcelFile.value) {
+      loadingImport.value = true
+
+      try {
+        const excelBase64 = await readFileAsDataUrl(selectedExcelFile.value)
+        const payload = {
+          excelBase64,
+          excelFileName: selectedExcelFile.value.name,
+          defaultEmployeeName: defaultEmployeeName.value.trim() || undefined,
+          defaultEmployeeEmail: defaultEmployeeEmail.value.trim() || undefined,
+        }
+
+        const response = await importarNominaAdmin(payload)
+
+        successMessage.value = `${response.msg}. Creados: ${response.resumen.recibosCreados}, actualizados: ${response.resumen.recibosActualizados}, usuarios nuevos: ${response.resumen.usuariosNuevos}.`
+
+        selectedExcelFile.value = null
+
+        await cargarRecibosAdmin(search.value)
+        return true
+      } catch {
+        errorMessage.value = 'No fue posible importar el archivo Excel.'
+        return false
+      } finally {
+        loadingImport.value = false
+      }
+    }
 
     if (!parsedItems.value.length) {
       generarPreview()
@@ -337,13 +398,30 @@ export const useAdminPayroll = () => {
 
   const limpiarEntrada = () => {
     rawInput.value = ''
+    selectedExcelFile.value = null
+    defaultEmployeeName.value = ''
+    defaultEmployeeEmail.value = ''
     parsedItems.value = []
     previewRecibos.value = []
     limpiarMensajes()
   }
 
+  const setExcelFile = (file: File | null) => {
+    selectedExcelFile.value = file
+
+    if (file) {
+      rawInput.value = ''
+      parsedItems.value = []
+      previewRecibos.value = []
+      limpiarMensajes()
+    }
+  }
+
   return {
     rawInput,
+    selectedExcelFile,
+    defaultEmployeeName,
+    defaultEmployeeEmail,
     search,
     previewRecibos,
     recibosExistentes,
@@ -360,5 +438,6 @@ export const useAdminPayroll = () => {
     seleccionarRecibo,
     limpiarEntrada,
     limpiarMensajes,
+    setExcelFile,
   }
 }

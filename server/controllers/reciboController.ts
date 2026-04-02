@@ -10,7 +10,17 @@ export const getMisUltimosRecibos = async (req: Request, res: Response) => {
       limit: 4,
     })
 
-    return res.json(recibos)
+    const payload = recibos.map((recibo) => {
+      const data = recibo.toJSON() as Record<string, unknown>
+      const detalles = (data.detalles as Record<string, unknown> | undefined) ?? {}
+
+      return {
+        ...data,
+        estado: String(detalles.status || 'Pagado'),
+      }
+    })
+
+    return res.json(payload)
   } catch {
     return res.status(500).json({ msg: 'Error al obtener nóminas.' })
   }
