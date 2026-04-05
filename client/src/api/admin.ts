@@ -2,12 +2,13 @@ import http from './http'
 import type { Recibo } from '../types/payroll'
 
 export interface NominaImportItemPayload {
-  email: string
+  quickbooksId: string
   nombre: string
   fecha: string
   totalNeto: number
   periodo?: string
   desglose?: Record<string, unknown>
+  checkNumber?: string
 }
 
 interface ImportNominaResponse {
@@ -20,6 +21,28 @@ interface ImportNominaResponse {
   }
 }
 
+export interface CreateEmployeeByAdminPayload {
+  username: string
+  password: string
+  role: 'admin' | 'empleado'
+  quickbooks_id?: string
+  first_name?: string
+  last_name?: string
+  position?: string
+  base_salary?: number
+}
+
+interface CreateEmployeeByAdminResponse {
+  message: string
+  data: {
+    username: string
+    role: 'admin' | 'empleado'
+    employee?: string
+    quickbooks_id?: string
+    employee_id: number | null
+  }
+}
+
 export const importarNominaAdmin = async (payload: {
   nominaData?: NominaImportItemPayload[]
   csv?: string
@@ -27,13 +50,13 @@ export const importarNominaAdmin = async (payload: {
   excelBase64?: string
   excelFileName?: string
   defaultEmployeeName?: string
-  defaultEmployeeEmail?: string
+  defaultEmployeeQuickbooksId?: string
 }) => {
   const { data } = await http.post<ImportNominaResponse>('/admin/importar-nomina', payload)
   return data
 }
 
-export const getRecibosAdmin = async (search = '', limit = 40) => {
+export const getRecibosAdmin = async (search = '', limit = 4) => {
   const { data } = await http.get<Recibo[]>('/admin/recibos', {
     params: {
       search: search.trim() || undefined,
@@ -41,5 +64,10 @@ export const getRecibosAdmin = async (search = '', limit = 40) => {
     },
   })
 
+  return data
+}
+
+export const createEmployeeAdmin = async (payload: CreateEmployeeByAdminPayload) => {
+  const { data } = await http.post<CreateEmployeeByAdminResponse>('/admin/empleados', payload)
   return data
 }

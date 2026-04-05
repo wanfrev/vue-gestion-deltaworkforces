@@ -102,8 +102,8 @@
                 <p class="mt-1 text-sm font-medium text-slate-800">{{ authStore.user?.nombre || 'No disponible' }}</p>
               </div>
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Correo</p>
-                <p class="mt-1 text-sm font-medium text-slate-800">{{ authStore.user?.email || 'No disponible' }}</p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Usuario</p>
+                <p class="mt-1 text-sm font-medium text-slate-800">{{ authStore.user?.username || 'No disponible' }}</p>
               </div>
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Rol</p>

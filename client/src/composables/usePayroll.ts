@@ -1,10 +1,8 @@
 import { ref } from 'vue'
+import axios from 'axios'
 import { getMisRecibos, getReciboPdf } from '../api/payroll'
-import { recibosMock } from '../mock-data'
 import { useAuthStore } from '../store/auth'
 import type { Recibo } from '../types/payroll'
-
-const USE_LOCAL_MOCK = import.meta.env.VITE_USE_LOCAL_MOCK === 'true'
 
 export const usePayroll = () => {
   const authStore = useAuthStore()
@@ -13,22 +11,20 @@ export const usePayroll = () => {
   const loading = ref(false)
   const errorMessage = ref('')
 
-  const isMockSession = () => USE_LOCAL_MOCK || authStore.token === 'mock-token'
-
   const cargarRecibos = async () => {
     loading.value = true
     errorMessage.value = ''
 
-    if (isMockSession()) {
-      recibos.value = recibosMock
-      loading.value = false
-      return
-    }
-
     try {
       recibos.value = await getMisRecibos()
-    } catch {
-      errorMessage.value = 'No fue posible cargar los recibos.'
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        authStore.clearSession()
+        errorMessage.value = 'Tu sesión expiró. Inicia sesión nuevamente.'
+      } else {
+        errorMessage.value = 'No fue posible cargar los recibos.'
+      }
+
       recibos.value = []
     } finally {
       loading.value = false
@@ -44,10 +40,6 @@ export const usePayroll = () => {
   }
 
   const descargarPdf = async (recibo: Recibo) => {
-    if (isMockSession()) {
-      return false
-    }
-
     try {
       const blob = await getReciboPdf(recibo.id)
       const url = window.URL.createObjectURL(blob)
@@ -59,8 +51,14 @@ export const usePayroll = () => {
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
       return true
-    } catch {
-      errorMessage.value = 'No fue posible descargar el PDF. Se abrirá para impresión.'
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        authStore.clearSession()
+        errorMessage.value = 'Tu sesión expiró. Inicia sesión nuevamente.'
+      } else {
+        errorMessage.value = 'No fue posible descargar el PDF. Se abrirá para impresión.'
+      }
+
       return false
     }
   }

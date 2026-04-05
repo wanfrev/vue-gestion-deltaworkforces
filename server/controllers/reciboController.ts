@@ -1,23 +1,75 @@
 import { Request, Response } from 'express'
-import { Recibo, User } from '../models'
+import { Employee, PaymentRecord, User } from '../models'
 import { generarReciboPDF } from '../services/pdfService'
+
+const buildEmployeeName = (employeeData?: Record<string, unknown>): string => {
+  if (!employeeData) {
+    return 'Empleado'
+  }
+
+  const firstName = String(employeeData.first_name ?? '').trim()
+  const lastName = String(employeeData.last_name ?? '').trim()
+  const fullName = `${firstName} ${lastName}`.trim()
+
+  if (fullName) {
+    return fullName
+  }
+
+  const userData = employeeData.User as Record<string, unknown> | undefined
+  return String(userData?.username ?? 'Empleado')
+}
+
+const mapPaymentRecordToReciboPayload = (paymentRecordData: Record<string, unknown>) => {
+  const employeeData = paymentRecordData.Employee as Record<string, unknown> | undefined
+  const userData = employeeData?.User as Record<string, unknown> | undefined
+  const detalles = (paymentRecordData.details as Record<string, unknown> | undefined) ?? {}
+  const estado = String(detalles.status || 'Pagado')
+  const nombreEmpleado = buildEmployeeName(employeeData)
+  const username = String(userData?.username ?? '')
+
+  return {
+    id: Number(paymentRecordData.id || 0),
+    fecha_pago: String(paymentRecordData.payment_date ?? ''),
+    monto: Number(paymentRecordData.net_pay || 0),
+    periodo: String(paymentRecordData.pay_period || detalles.periodo_pago || 'Periodo no especificado'),
+    estado,
+    detalles,
+    User: {
+      id: Number(userData?.id || 0),
+      nombre: nombreEmpleado,
+      email: username,
+    },
+    empleadoNombre: nombreEmpleado,
+    empleadoEmail: username,
+  }
+}
 
 export const getMisUltimosRecibos = async (req: Request, res: Response) => {
   try {
-    const recibos = await Recibo.findAll({
-      where: { UserId: req.user?.id },
-      order: [['fecha_pago', 'DESC']],
+    const paymentRecords = await PaymentRecord.findAll({
+      include: [
+        {
+          model: Employee,
+          required: true,
+          where: { user_id: req.user?.id },
+          include: [
+            {
+              model: User,
+              attributes: ['id', 'username'],
+              required: true,
+            },
+          ],
+        },
+      ],
+      order: [
+        ['payment_date', 'DESC'],
+        ['id', 'DESC'],
+      ],
       limit: 4,
     })
 
-    const payload = recibos.map((recibo) => {
-      const data = recibo.toJSON() as Record<string, unknown>
-      const detalles = (data.detalles as Record<string, unknown> | undefined) ?? {}
-
-      return {
-        ...data,
-        estado: String(detalles.status || 'Pagado'),
-      }
+    const payload = paymentRecords.map((paymentRecord) => {
+      return mapPaymentRecordToReciboPayload(paymentRecord.toJSON() as Record<string, unknown>)
     })
 
     return res.json(payload)
@@ -30,24 +82,39 @@ export const getMiReciboPDF = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
 
-    const recibo = await Recibo.findOne({
-      where: {
-        id,
-        UserId: req.user?.id,
-      },
+    const paymentRecord = await PaymentRecord.findOne({
+      where: { id },
       include: [
         {
-          model: User,
-          attributes: ['nombre', 'email'],
+          model: Employee,
+          required: true,
+          where: { user_id: req.user?.id },
+          include: [
+            {
+              model: User,
+              attributes: ['id', 'username'],
+              required: true,
+            },
+          ],
         },
       ],
     })
 
-    if (!recibo) {
+    if (!paymentRecord) {
       return res.status(404).json({ msg: 'Recibo no encontrado.' })
     }
 
-    const pdfBuffer = await generarReciboPDF(recibo.toJSON())
+    const mappedRecibo = mapPaymentRecordToReciboPayload(paymentRecord.toJSON() as Record<string, unknown>)
+
+    const pdfBuffer = await generarReciboPDF({
+      User: {
+        nombre: mappedRecibo.User?.nombre,
+      },
+      fecha_pago: mappedRecibo.fecha_pago,
+      periodo: mappedRecibo.periodo,
+      monto: mappedRecibo.monto,
+      detalles: mappedRecibo.detalles,
+    })
 
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `attachment; filename=recibo-${id}.pdf`)

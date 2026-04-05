@@ -1,17 +1,28 @@
 import sequelize from '../config/db'
 import createUserModel from './User'
-import createReciboModel from './Recibo'
+import createEmployeeModel from './Employee'
+import createPaymentRecordModel from './PaymentRecord'
 
 const User = createUserModel(sequelize)
-const Recibo = createReciboModel(sequelize)
+const Employee = createEmployeeModel(sequelize)
+const PaymentRecord = createPaymentRecordModel(sequelize)
 
-User.hasMany(Recibo, {
-  foreignKey: 'UserId',
+User.hasOne(Employee, {
+  foreignKey: 'user_id',
   onDelete: 'CASCADE',
 })
 
-Recibo.belongsTo(User, {
-  foreignKey: 'UserId',
+Employee.belongsTo(User, {
+  foreignKey: 'user_id',
 })
 
-export { sequelize, User, Recibo }
+Employee.hasMany(PaymentRecord, {
+  foreignKey: 'employee_id',
+  onDelete: 'CASCADE',
+})
+
+PaymentRecord.belongsTo(Employee, {
+  foreignKey: 'employee_id',
+})
+
+export { sequelize, User, Employee, PaymentRecord }

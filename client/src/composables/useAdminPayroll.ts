@@ -124,9 +124,19 @@ const buildPeriodo = (record: RawRecord): string => {
 
 const normalizeRawToImportItem = (record: RawRecord): NominaImportItemPayload => {
   const periodo = buildPeriodo(record)
+  const quickbooksId = pick(record, [
+    'quickbooks_id',
+    'quickbooksid',
+    'employee_id',
+    'employee_code',
+    'codigo_empleado',
+    'empleado_id',
+    'empleado',
+    'nombre',
+  ])
 
   return {
-    email: pick(record, ['email', 'correo', 'correo_electronico']),
+    quickbooksId,
     nombre: pick(record, ['nombre', 'empleado', 'name']),
     fecha: pick(record, ['fecha', 'fecha_pago', 'pay_date']),
     totalNeto: parseNumber(pick(record, ['total_neto', 'totalneto', 'monto', 'neto', 'net_pay'])),
@@ -139,6 +149,7 @@ const normalizeRawToImportItem = (record: RawRecord): NominaImportItemPayload =>
       periodo_pago: periodo,
       cargo: pick(record, ['cargo', 'puesto']) || 'No especificado',
     },
+    checkNumber: pick(record, ['check_number', 'numero_cheque', 'cheque']),
   }
 }
 
@@ -204,7 +215,7 @@ const toPreviewRecibo = (item: NominaImportItemPayload, index: number): Recibo =
     estado: 'Vista previa',
     User: {
       nombre: item.nombre,
-      email: item.email,
+      email: item.quickbooksId,
     },
     detalles: {
       ...detalles,
@@ -243,7 +254,7 @@ export const useAdminPayroll = () => {
   const rawInput = ref('')
   const selectedExcelFile = ref<File | null>(null)
   const defaultEmployeeName = ref('')
-  const defaultEmployeeEmail = ref('')
+  const defaultEmployeeQuickbooksId = ref('')
   const search = ref('')
 
   const parsedItems = ref<NominaImportItemPayload[]>([])
@@ -259,7 +270,7 @@ export const useAdminPayroll = () => {
   const successMessage = ref('')
 
   const validItems = computed(() => {
-    return parsedItems.value.filter((item) => item.email && item.nombre && item.fecha)
+    return parsedItems.value.filter((item) => item.quickbooksId && item.nombre && item.fecha)
   })
 
   const limpiarMensajes = () => {
@@ -302,7 +313,7 @@ export const useAdminPayroll = () => {
       reciboSeleccionado.value = previewRecibos.value[0] ?? null
 
       if (!validItems.value.length) {
-        errorMessage.value = 'Se detectaron filas incompletas. Revisa email, nombre y fecha.'
+        errorMessage.value = 'Se detectaron filas incompletas. Revisa quickbooksId, nombre y fecha.'
       } else {
         successMessage.value = `Vista previa lista: ${validItems.value.length} registro(s) válidos.`
       }
@@ -325,7 +336,7 @@ export const useAdminPayroll = () => {
           excelBase64,
           excelFileName: selectedExcelFile.value.name,
           defaultEmployeeName: defaultEmployeeName.value.trim() || undefined,
-          defaultEmployeeEmail: defaultEmployeeEmail.value.trim() || undefined,
+          defaultEmployeeQuickbooksId: defaultEmployeeQuickbooksId.value.trim() || undefined,
         }
 
         const response = await importarNominaAdmin(payload)
@@ -400,7 +411,7 @@ export const useAdminPayroll = () => {
     rawInput.value = ''
     selectedExcelFile.value = null
     defaultEmployeeName.value = ''
-    defaultEmployeeEmail.value = ''
+    defaultEmployeeQuickbooksId.value = ''
     parsedItems.value = []
     previewRecibos.value = []
     limpiarMensajes()
@@ -421,7 +432,7 @@ export const useAdminPayroll = () => {
     rawInput,
     selectedExcelFile,
     defaultEmployeeName,
-    defaultEmployeeEmail,
+    defaultEmployeeQuickbooksId,
     search,
     previewRecibos,
     recibosExistentes,

@@ -27,7 +27,7 @@
 
       <form class="space-y-4" @submit.prevent="submitLogin">
         <div>
-          <label for="email" class="mb-1 block text-sm font-medium text-gray-700">Correo electrónico</label>
+          <label for="username" class="mb-1 block text-sm font-medium text-gray-700">Usuario</label>
           <div class="relative">
             <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
               <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -36,11 +36,11 @@
               </svg>
             </span>
             <input
-              id="email"
-              v-model="email"
-              type="email"
-              autocomplete="email"
-              placeholder="empleado@empresa.com"
+              id="username"
+              v-model="username"
+              type="text"
+              autocomplete="username"
+              placeholder="jdoe2024"
               class="w-full rounded-lg border border-gray-300 bg-white/95 px-3 py-3 pl-11 text-delta-text outline-none transition duration-200 placeholder:text-gray-400 focus:border-delta-blue focus:ring-4 focus:ring-delta-blue/20"
             />
           </div>
@@ -118,30 +118,31 @@ import { useRouter } from 'vue-router'
 import DeltaButton from '../components/common/DeltaButton.vue'
 import DeltaLogo from '../components/common/DeltaLogo.vue'
 import { useAuth } from '../composables/useAuth'
+import { resolveHomeByRole } from '../constants/roles'
 
 const router = useRouter()
-const { loading, errorMessage, login } = useAuth()
+const { loading, errorMessage, login, authStore } = useAuth()
 
-const email = ref('')
+const username = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const validationError = ref('')
 
 const submitLogin = async () => {
-  if (!email.value.trim() || !password.value.trim()) {
-    validationError.value = 'Email y contraseña son obligatorios.'
+  if (!username.value.trim() || !password.value.trim()) {
+    validationError.value = 'Usuario y contraseña son obligatorios.'
     return
   }
 
   validationError.value = ''
 
   const ok = await login({
-    email: email.value,
+    username: username.value.trim(),
     password: password.value,
   })
 
   if (ok) {
-    router.push('/dashboard')
+    router.push(resolveHomeByRole(authStore.user?.rol))
   }
 }
 </script>

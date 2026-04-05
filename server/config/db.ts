@@ -3,8 +3,21 @@ import { Sequelize } from 'sequelize'
 
 dotenv.config()
 
-const sequelize = new Sequelize(process.env.DATABASE_URL as string, {
+const dbUrl = process.env.DATABASE_URL as string
+
+const isLocal = dbUrl?.includes('localhost') || dbUrl?.includes('127.0.0.1')
+
+const sequelize = new Sequelize(dbUrl, {
   dialect: 'postgres',
+  protocol: 'postgres',
+  dialectOptions: isLocal
+    ? undefined
+    : {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false,
+        },
+      },
   logging: false,
 })
 

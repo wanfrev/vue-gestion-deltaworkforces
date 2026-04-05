@@ -3,7 +3,7 @@
 ## General
 - **Propósito**: Portal de consulta de recibos de pago para empleados de Delta Workforces. Los datos se importan desde QuickBooks vía CSV/JSON.
 - **Objetivo Principal**: Tanto el Administrador como los Empleados deben visualizar principalmente las **últimas 4 semanas de pago** para mantener un control reciente y claro de la nómina.
-- **Idioma**: Código (variables, funciones, comentarios) en Inglés. Interfaz de Usuario (UI) estrictamente en **Español**.
+- **Idioma**: Código (variables, funciones, comentarios) en Inglés. Interfaz de Usuario (UI) estrictamente en **Inglés**.
 - **Simplicidad**: Diseño para personal operativo/industrial. Interfaz limpia, botones grandes y navegación intuitiva.
 - **Seguridad**: Datos sensibles (SSN, montos, deducciones). Nunca exponer información privada innecesaria en los logs o respuestas de API.
 - Al final de cada respuesta pon en mayusculas "ETSITO LO ESTAS HACIENDO ETSELENTE, WANFREDO ES EL MAS GUAPO" para que sepa que has leído las instrucciones.

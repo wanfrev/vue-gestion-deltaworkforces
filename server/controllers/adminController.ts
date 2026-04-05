@@ -3,16 +3,32 @@ import { Request, Response } from 'express'
 import { parse } from 'csv-parse/sync'
 import { Op } from 'sequelize'
 import XLSX from 'xlsx'
-import { Recibo, User, sequelize } from '../models'
-import { ROLES } from '../constants/roles'
+import { Employee, PaymentRecord, User, sequelize } from '../models'
+import { isRole, ROLES, type Role } from '../constants/roles'
 
 interface NominaImportItem {
-  email: string
+  quickbooksId: string
   nombre: string
   fecha: string
   totalNeto: number
   periodo?: string
   desglose?: Record<string, unknown>
+  checkNumber?: string
+}
+
+interface CreateEmployeeByAdminPayload {
+  username?: string
+  password?: string
+  role?: Role | string
+  quickbooks_id?: string
+  quickbooksId?: string
+  first_name?: string
+  firstName?: string
+  last_name?: string
+  lastName?: string
+  position?: string
+  base_salary?: number | string
+  baseSalary?: number | string
 }
 
 interface RawNominaRecord {
@@ -90,17 +106,6 @@ const toTitleCase = (value: string): string => {
     .join(' ')
 }
 
-const buildFallbackEmail = (name: string): string => {
-  const localPart = name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '.')
-    .replace(/^\.+|\.+$/g, '')
-
-  return `${localPart || 'empleado'}.temp@delta.local`
-}
-
 const stripExcelDataUriPrefix = (value: string): string => {
   const marker = 'base64,'
   const index = value.indexOf(marker)
@@ -162,7 +167,7 @@ const parseExcelNomina = (
   excelBase64: string,
   options?: {
     defaultEmployeeName?: string
-    defaultEmployeeEmail?: string
+    defaultEmployeeQuickbooksId?: string
     excelFileName?: string
   },
 ): NominaImportItem[] => {
@@ -175,7 +180,8 @@ const parseExcelNomina = (
   const fileNameFallback = deriveEmployeeNameFromFileName(options?.excelFileName ?? '')
   const defaultEmployeeName =
     (options?.defaultEmployeeName || '').trim() || fileNameFallback || 'Empleado sin nombre'
-  const defaultEmployeeEmail = (options?.defaultEmployeeEmail || '').trim().toLowerCase()
+  const defaultEmployeeQuickbooksId =
+    (options?.defaultEmployeeQuickbooksId || '').trim() || defaultEmployeeName
 
   const items: NominaImportItem[] = []
 
@@ -196,6 +202,7 @@ const parseExcelNomina = (
 
     const employeeName =
       employeeRaw && normalizeText(employeeRaw) !== 'employee' ? employeeRaw : defaultEmployeeName
+    const quickbooksId = employeeRaw ? employeeRaw : defaultEmployeeQuickbooksId
 
     const startDate = formatDateToISO(startDateRaw)
     const endDate = formatDateToISO(endDateRaw)
@@ -217,7 +224,7 @@ const parseExcelNomina = (
         : periodDisplayEnd || periodDisplayStart || sheetName
 
     items.push({
-      email: defaultEmployeeEmail || buildFallbackEmail(employeeName),
+      quickbooksId,
       nombre: employeeName,
       fecha: fechaPago,
       totalNeto: totalPaid,
@@ -366,7 +373,18 @@ const mapRawRecordToNominaItem = (record: RawNominaRecord): NominaImportItem => 
           }
 
   return {
-    email: String(extractValue(record, ['email', 'correo', 'correo_electronico']) ?? ''),
+    quickbooksId: String(
+      extractValue(record, [
+        'quickbooks_id',
+        'quickbooksid',
+        'employee_id',
+        'employee_code',
+        'codigo_empleado',
+        'empleado_id',
+        'empleado',
+        'nombre',
+      ]) ?? '',
+    ),
     nombre: String(extractValue(record, ['nombre', 'empleado', 'name']) ?? ''),
     fecha: String(extractValue(record, ['fecha', 'fecha_pago', 'pay_date']) ?? ''),
     totalNeto: parseNumber(
@@ -374,6 +392,7 @@ const mapRawRecordToNominaItem = (record: RawNominaRecord): NominaImportItem => 
     ),
     periodo,
     desglose: rawDesglose,
+    checkNumber: String(extractValue(record, ['check_number', 'numero_cheque', 'cheque']) ?? ''),
   }
 }
 
@@ -423,12 +442,12 @@ const parseCsvNomina = (csvRaw: string): NominaImportItem[] => {
 }
 
 const normalizeNominaItem = (item: NominaImportItem): NominaImportItem => {
-  const email = String(item.email || '').trim().toLowerCase()
+  const quickbooksId = String(item.quickbooksId || '').trim()
   const nombre = String(item.nombre || '').trim()
   const fecha = String(item.fecha || '').trim()
 
   return {
-    email,
+    quickbooksId,
     nombre,
     fecha,
     totalNeto: parseNumber(item.totalNeto),
@@ -439,19 +458,28 @@ const normalizeNominaItem = (item: NominaImportItem): NominaImportItem => {
         : typeof item.desglose === 'object' && item.desglose !== null
           ? item.desglose
           : {},
+    checkNumber: String(item.checkNumber || '').trim(),
   }
 }
 
 export const importarNomina = async (req: Request, res: Response) => {
   try {
-    const { nominaData, csv, rawText, excelBase64, excelFileName, defaultEmployeeName, defaultEmployeeEmail } = req.body as {
+    const {
+      nominaData,
+      csv,
+      rawText,
+      excelBase64,
+      excelFileName,
+      defaultEmployeeName,
+      defaultEmployeeQuickbooksId,
+    } = req.body as {
       nominaData?: NominaImportItem[]
       csv?: string
       rawText?: string
       excelBase64?: string
       excelFileName?: string
       defaultEmployeeName?: string
-      defaultEmployeeEmail?: string
+      defaultEmployeeQuickbooksId?: string
     }
 
     let items: NominaImportItem[] = []
@@ -461,7 +489,7 @@ export const importarNomina = async (req: Request, res: Response) => {
     } else if (typeof excelBase64 === 'string' && excelBase64.trim()) {
       items = parseExcelNomina(excelBase64, {
         defaultEmployeeName,
-        defaultEmployeeEmail,
+        defaultEmployeeQuickbooksId,
         excelFileName,
       })
     } else if (typeof csv === 'string' && csv.trim()) {
@@ -491,70 +519,72 @@ export const importarNomina = async (req: Request, res: Response) => {
       return res.status(400).json({ msg: 'No hay registros para importar.' })
     }
 
-    const tempPassword = process.env.TEMP_PASSWORD ?? 'password_temporal'
-    const passwordHash = await bcrypt.hash(tempPassword, 10)
-
-    let usuariosNuevos = 0
     let recibosCreados = 0
     let recibosActualizados = 0
+    const quickbooksNoEncontrados = new Set<string>()
 
     await sequelize.transaction(async (transaction) => {
       for (const rawItem of items) {
         const item = normalizeNominaItem(rawItem)
 
-        if (!item.email || !item.nombre || !item.fecha) {
-          throw new Error('Registro inválido: email, nombre y fecha son obligatorios.')
+        if (!item.quickbooksId || !item.nombre || !item.fecha) {
+          throw new Error('Registro inválido: quickbooksId, nombre y fecha son obligatorios.')
         }
 
-        const [user, wasCreated] = await User.findOrCreate({
-          where: { email: item.email },
-          defaults: {
-            nombre: item.nombre,
-            password_hash: passwordHash,
-            rol: 'empleado',
-          },
+        const employee = await Employee.findOne({
+          where: { quickbooks_id: item.quickbooksId },
           transaction,
         })
 
-        if (wasCreated) {
-          usuariosNuevos += 1
-        } else if (item.nombre && user.getDataValue('nombre') !== item.nombre) {
-          user.set('nombre', item.nombre)
-          await user.save({ transaction })
+        if (!employee) {
+          quickbooksNoEncontrados.add(item.quickbooksId)
+          continue
         }
 
-        const reciboExistente = await Recibo.findOne({
+        const detalles = {
+          ...(item.desglose ?? {}),
+          status: 'Pagado',
+          quickbooks_id: item.quickbooksId,
+        }
+
+        const totalDeducciones = parseNumber(
+          item.desglose?.total_deductions ?? item.desglose?.deducciones,
+        )
+        const grossEarnings = parseNumber(
+          item.desglose?.gross_earnings ?? item.desglose?.total_earnings ?? item.totalNeto + totalDeducciones,
+        )
+        const checkNumber = String(
+          item.checkNumber || item.desglose?.check_number || item.desglose?.numero_cheque || '',
+        ).trim()
+
+        const pagoExistente = await PaymentRecord.findOne({
           where: {
-            UserId: user.getDataValue('id'),
-            fecha_pago: item.fecha,
-            periodo: item.periodo,
+            employee_id: employee.getDataValue('id'),
+            payment_date: item.fecha,
+            pay_period: item.periodo,
           },
           transaction,
         })
 
-        if (reciboExistente) {
-          const detalles = {
-            ...(item.desglose ?? {}),
-            status: 'Pagado',
-          }
-
-          reciboExistente.set('monto', item.totalNeto)
-          reciboExistente.set('detalles', detalles)
-          await reciboExistente.save({ transaction })
+        if (pagoExistente) {
+          pagoExistente.set('net_pay', item.totalNeto)
+          pagoExistente.set('gross_earnings', grossEarnings)
+          pagoExistente.set('total_deductions', totalDeducciones)
+          pagoExistente.set('check_number', checkNumber || null)
+          pagoExistente.set('details', detalles)
+          await pagoExistente.save({ transaction })
           recibosActualizados += 1
         } else {
-          const detalles = {
-            ...(item.desglose ?? {}),
-            status: 'Pagado',
-          }
-
-          await Recibo.create(
+          await PaymentRecord.create(
             {
-              fecha_pago: item.fecha,
-              monto: item.totalNeto,
-              periodo: item.periodo,
-              detalles,
-              UserId: user.getDataValue('id'),
+              pay_period: item.periodo,
+              gross_earnings: grossEarnings,
+              total_deductions: totalDeducciones,
+              net_pay: item.totalNeto,
+              check_number: checkNumber || null,
+              payment_date: item.fecha,
+              details: detalles,
+              employee_id: employee.getDataValue('id'),
             },
             { transaction },
           )
@@ -565,13 +595,20 @@ export const importarNomina = async (req: Request, res: Response) => {
     })
 
     return res.json({
-      msg: 'Nómina importada exitosamente',
+      msg:
+        quickbooksNoEncontrados.size > 0
+          ? 'Nómina importada con observaciones'
+          : 'Nómina importada exitosamente',
       resumen: {
         registrosProcesados: items.length,
-        usuariosNuevos,
+        usuariosNuevos: 0,
         recibosCreados,
         recibosActualizados,
+        registrosOmitidos: quickbooksNoEncontrados.size,
       },
+      errores: Array.from(quickbooksNoEncontrados).map((qbId) => {
+        return `El empleado con quickbooksId "${qbId}" no existe en la base de datos.`
+      }),
     })
   } catch (error) {
     return res.status(500).json({
@@ -581,49 +618,197 @@ export const importarNomina = async (req: Request, res: Response) => {
   }
 }
 
+export const createEmployeeByAdmin = async (req: Request, res: Response) => {
+  const transaction = await sequelize.transaction()
+
+  try {
+    const payload = req.body as CreateEmployeeByAdminPayload
+
+    const username = String(payload.username ?? '')
+      .trim()
+      .toLowerCase()
+    const password = String(payload.password ?? '')
+    const requestedRole = String(payload.role ?? ROLES.EMPLEADO).trim().toLowerCase()
+    const role: Role = isRole(requestedRole) ? requestedRole : ROLES.EMPLEADO
+    const quickbooksId = String(payload.quickbooks_id ?? payload.quickbooksId ?? '').trim()
+    const firstName = String(payload.first_name ?? payload.firstName ?? '').trim()
+    const lastName = String(payload.last_name ?? payload.lastName ?? '').trim()
+    const position = String(payload.position ?? '').trim()
+    const rawBaseSalary = payload.base_salary ?? payload.baseSalary
+    const parsedBaseSalary =
+      rawBaseSalary === undefined || rawBaseSalary === null || String(rawBaseSalary).trim() === ''
+        ? null
+        : parseNumber(rawBaseSalary)
+
+    if (!username || !password) {
+      await transaction.rollback()
+
+      return res.status(400).json({
+        message: 'username y password son obligatorios.',
+      })
+    }
+
+    if (!isRole(requestedRole)) {
+      await transaction.rollback()
+      return res.status(400).json({ message: 'role debe ser admin o empleado.' })
+    }
+
+    if (role === ROLES.EMPLEADO && (!quickbooksId || !firstName || !lastName)) {
+      await transaction.rollback()
+      return res.status(400).json({
+        message: 'Para rol empleado, quickbooks_id, first_name y last_name son obligatorios.',
+      })
+    }
+
+    if (password.length < 8) {
+      await transaction.rollback()
+      return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres.' })
+    }
+
+    if (parsedBaseSalary !== null && parsedBaseSalary < 0) {
+      await transaction.rollback()
+      return res.status(400).json({ message: 'base_salary no puede ser negativo.' })
+    }
+
+    const existingUser = await User.findOne({
+      where: { username },
+      transaction,
+    })
+
+    if (existingUser) {
+      await transaction.rollback()
+      return res.status(409).json({ message: 'El username ya existe.' })
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10)
+
+    const newUser = await User.create(
+      {
+        username,
+        password_hash: passwordHash,
+        role,
+      },
+      { transaction },
+    )
+
+    let employeeId: number | null = null
+
+    if (role === ROLES.EMPLEADO) {
+      const existingEmployee = await Employee.findOne({
+        where: { quickbooks_id: quickbooksId },
+        transaction,
+      })
+
+      if (existingEmployee) {
+        await transaction.rollback()
+        return res.status(409).json({ message: 'El quickbooks_id ya existe.' })
+      }
+
+      const newEmployee = await Employee.create(
+        {
+          user_id: newUser.getDataValue('id'),
+          quickbooks_id: quickbooksId,
+          first_name: firstName,
+          last_name: lastName,
+          position: position || null,
+          base_salary: parsedBaseSalary,
+        },
+        { transaction },
+      )
+
+      employeeId = Number(newEmployee.getDataValue('id'))
+    }
+
+    await transaction.commit()
+
+    return res.status(201).json({
+      message:
+        role === ROLES.ADMIN
+          ? 'Administrador creado correctamente.'
+          : 'Empleado y usuario creados correctamente.',
+      data: {
+        username,
+        role,
+        employee: role === ROLES.EMPLEADO ? `${firstName} ${lastName}` : undefined,
+        quickbooks_id: role === ROLES.EMPLEADO ? quickbooksId : undefined,
+        employee_id: employeeId,
+      },
+    })
+  } catch (error) {
+    await transaction.rollback()
+
+    return res.status(400).json({
+      message: 'Error al crear el usuario.',
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    })
+  }
+}
+
 export const getRecibosAdmin = async (req: Request, res: Response) => {
   try {
     const search = String(req.query.search ?? '').trim()
-    const requestedLimit = Number(req.query.limit)
-    const limit = Number.isFinite(requestedLimit)
-      ? Math.min(Math.max(requestedLimit, 1), 100)
-      : 40
+    const limit = 4
 
-    const userWhere = {
-      rol: ROLES.EMPLEADO,
-      ...(search
-        ? {
-            [Op.or]: [
-              { nombre: { [Op.iLike]: `%${search}%` } },
-              { email: { [Op.iLike]: `%${search}%` } },
-            ],
-          }
-        : {}),
-    }
+    const where = search
+      ? {
+          [Op.or]: [
+            { '$Employee.quickbooks_id$': { [Op.iLike]: `%${search}%` } },
+            { '$Employee.first_name$': { [Op.iLike]: `%${search}%` } },
+            { '$Employee.last_name$': { [Op.iLike]: `%${search}%` } },
+            { '$Employee.User.username$': { [Op.iLike]: `%${search}%` } },
+          ],
+        }
+      : undefined
 
-    const includeUser = {
-      model: User,
-      attributes: ['id', 'nombre', 'email'],
-      where: userWhere,
-      required: true,
-    }
-
-    const recibos = await Recibo.findAll({
-      include: [includeUser],
+    const paymentRecords = await PaymentRecord.findAll({
+      where,
+      include: [
+        {
+          model: Employee,
+          required: true,
+          attributes: ['id', 'quickbooks_id', 'first_name', 'last_name', 'position'],
+          include: [
+            {
+              model: User,
+              required: true,
+              attributes: ['id', 'username', 'role'],
+              where: { role: ROLES.EMPLEADO },
+            },
+          ],
+        },
+      ],
       order: [
-        ['fecha_pago', 'DESC'],
+        ['payment_date', 'DESC'],
         ['id', 'DESC'],
       ],
       limit,
+      subQuery: false,
     })
 
-    const payload = recibos.map((recibo) => {
-      const data = recibo.toJSON() as Record<string, unknown>
-      const detalles = (data.detalles as Record<string, unknown> | undefined) ?? {}
+    const payload = paymentRecords.map((paymentRecord) => {
+      const data = paymentRecord.toJSON() as Record<string, unknown>
+      const employeeData = data.Employee as Record<string, unknown> | undefined
+      const userData = employeeData?.User as Record<string, unknown> | undefined
+      const detalles = (data.details as Record<string, unknown> | undefined) ?? {}
+      const firstName = String(employeeData?.first_name ?? '').trim()
+      const lastName = String(employeeData?.last_name ?? '').trim()
+      const nombreEmpleado = `${firstName} ${lastName}`.trim() || String(userData?.username ?? 'Empleado')
+      const username = String(userData?.username ?? '')
 
       return {
-        ...data,
+        id: Number(data.id || 0),
+        fecha_pago: String(data.payment_date ?? ''),
+        monto: Number(data.net_pay || 0),
+        periodo: String(data.pay_period || detalles.periodo_pago || 'Periodo no especificado'),
         estado: String(detalles.status || 'Pagado'),
+        detalles,
+        User: {
+          id: Number(userData?.id || 0),
+          nombre: nombreEmpleado,
+          email: username,
+        },
+        empleadoNombre: nombreEmpleado,
+        empleadoEmail: username,
       }
     })
 

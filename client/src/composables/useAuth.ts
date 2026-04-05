@@ -1,15 +1,20 @@
 import { ref } from 'vue'
+import axios from 'axios'
 import { loginRequest } from '../api/auth'
 import { useAuthStore } from '../store/auth'
 import router from '../router'
 import type { LoginCredentials } from '../types/auth'
 
-const USE_LOCAL_MOCK = import.meta.env.VITE_USE_LOCAL_MOCK === 'true'
+const resolveLoginErrorMessage = (error: unknown): string => {
+  if (axios.isAxiosError(error)) {
+    const apiMessage = error.response?.data?.msg
 
-const getNombreDesdeEmail = (email: string) => {
-  const parteLocal = email.split('@')[0] || 'Empleado'
-  const [nombre] = parteLocal.split('.')
-  return nombre.charAt(0).toUpperCase() + nombre.slice(1)
+    if (typeof apiMessage === 'string' && apiMessage.trim()) {
+      return apiMessage
+    }
+  }
+
+  return 'Credenciales inválidas o servidor no disponible.'
 }
 
 export const useAuth = () => {
@@ -21,28 +26,12 @@ export const useAuth = () => {
     loading.value = true
     errorMessage.value = ''
 
-    // Permitir acceso rápido en desarrollo usando la contraseña "1234",
-    // o cuando VITE_USE_LOCAL_MOCK esté activo.
-    if (USE_LOCAL_MOCK || (import.meta.env.DEV && credentials.password === '1234')) {
-      authStore.setSession({
-        token: 'mock-token',
-        user: {
-          id: 0,
-          nombre: getNombreDesdeEmail(credentials.email),
-          email: credentials.email,
-          rol: credentials.email.includes('admin') ? 'admin' : 'empleado',
-        },
-      })
-      loading.value = false
-      return true
-    }
-
     try {
       const session = await loginRequest(credentials)
       authStore.setSession(session)
       return true
-    } catch {
-      errorMessage.value = 'Credenciales inválidas o servidor no disponible.'
+    } catch (error) {
+      errorMessage.value = resolveLoginErrorMessage(error)
       return false
     } finally {
       loading.value = false
