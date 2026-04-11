@@ -1,36 +1,40 @@
 <template>
   <div class="min-h-screen bg-slate-900">
     <div class="flex min-h-screen flex-col md:flex-row">
-      <aside class="w-full border-b border-slate-800 bg-slate-900 text-slate-100 md:w-72 md:border-r md:border-b-0">
+      <aside class="w-full border-b border-slate-800/70 bg-linear-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 md:w-80 md:border-r md:border-b-0 md:border-r-slate-800/70">
         <div class="sticky top-0 px-5 py-6 md:px-6">
-          <div class="mb-7 flex items-center gap-3">
-            <DeltaLogo size="lg" />
+          <div class="mb-7 flex justify-center">
+            <DeltaLogo size="xl" centered />
           </div>
 
-          <nav class="space-y-2 text-sm">
+          <nav class="space-y-1.5 text-sm">
             <button
               type="button"
-              class="w-full rounded-lg border px-3 py-2 text-left font-medium transition"
+              class="group relative flex w-full items-center gap-2.5 overflow-hidden rounded-xl border px-3 py-2.5 text-left font-medium transition"
               :class="seccionActiva === 'mis-pagos'
-                ? 'border-blue-500/40 bg-slate-800 text-slate-100'
-                : 'border-transparent text-slate-300 hover:border-blue-500/40 hover:bg-slate-800 hover:text-slate-100'"
+                ? 'border-slate-700 bg-slate-800/80 text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
+                : 'border-transparent text-slate-300 hover:border-slate-700/80 hover:bg-slate-800/60 hover:text-slate-100'"
               @click="seccionActiva = 'mis-pagos'"
             >
-              Mis Pagos
+              <span class="absolute bottom-1.5 left-0 top-1.5 w-1 rounded-r-full transition" :class="seccionActiva === 'mis-pagos' ? 'bg-cyan-400' : 'bg-transparent group-hover:bg-slate-600/60'"></span>
+              <Wallet :size="16" :stroke-width="1.75" :class="seccionActiva === 'mis-pagos' ? 'text-cyan-300' : 'text-slate-400 group-hover:text-slate-100'" />
+              <span>Mis Pagos</span>
             </button>
             <button
               type="button"
-              class="w-full rounded-lg border px-3 py-2 text-left font-medium transition"
+              class="group relative flex w-full items-center gap-2.5 overflow-hidden rounded-xl border px-3 py-2.5 text-left font-medium transition"
               :class="seccionActiva === 'mi-perfil'
-                ? 'border-blue-500/40 bg-slate-800 text-slate-100'
-                : 'border-transparent text-slate-300 hover:border-blue-500/40 hover:bg-slate-800 hover:text-slate-100'"
+                ? 'border-slate-700 bg-slate-800/80 text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
+                : 'border-transparent text-slate-300 hover:border-slate-700/80 hover:bg-slate-800/60 hover:text-slate-100'"
               @click="seccionActiva = 'mi-perfil'"
             >
-              Mi Perfil
+              <span class="absolute bottom-1.5 left-0 top-1.5 w-1 rounded-r-full transition" :class="seccionActiva === 'mi-perfil' ? 'bg-cyan-400' : 'bg-transparent group-hover:bg-slate-600/60'"></span>
+              <User :size="16" :stroke-width="1.75" :class="seccionActiva === 'mi-perfil' ? 'text-cyan-300' : 'text-slate-400 group-hover:text-slate-100'" />
+              <span>Mi Perfil</span>
             </button>
           </nav>
 
-          <div class="mt-6 rounded-xl border border-slate-700 bg-slate-800/70 p-3 text-xs text-slate-300">
+          <div class="mt-6 rounded-2xl border border-slate-700/80 bg-slate-800/45 p-3 text-xs text-slate-300 backdrop-blur-xl">
             <p class="font-semibold text-slate-100">Resumen</p>
             <p class="mt-2">Último pago: {{ ultimoPagoFechaLabel }}</p>
             <p>Horas del mes: {{ formatHours(horasMes) }} hrs</p>
@@ -55,21 +59,27 @@
           <template v-if="seccionActiva === 'mis-pagos'">
             <section class="mb-5 grid gap-4 md:grid-cols-3">
               <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Year-to-Date ({{ ytdYear }})</p>
+                <div class="mt-2 flex items-baseline gap-2">
+                  <p class="font-mono text-3xl font-bold text-slate-900">{{ formatMoney(ytdMonto) }}</p>
+                  <span class="text-sm font-semibold text-emerald-600">USD</span>
+                </div>
+                <p class="mt-1 text-sm text-slate-500">Suma anual de net pay</p>
+              </article>
+
+              <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Último Pago</p>
-                <p class="mt-2 text-3xl font-bold text-slate-900">{{ formatMoney(ultimoPagoMonto) }}</p>
+                <div class="mt-2 flex items-baseline gap-2">
+                  <p class="font-mono text-3xl font-bold text-slate-900">{{ formatMoney(ultimoPagoMonto) }}</p>
+                  <span class="text-sm font-semibold text-emerald-600">USD</span>
+                </div>
                 <p class="mt-1 text-sm text-slate-500">Pagado el {{ ultimoPagoFechaLabel }}</p>
               </article>
 
               <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Horas Totales (Mes)</p>
-                <p class="mt-2 text-3xl font-bold text-slate-900">{{ formatHours(horasMes) }} hrs</p>
+                <p class="mt-2 text-3xl font-bold text-slate-900">{{ formatHours(horasMes) }} <span class="text-xl font-semibold text-slate-500">hrs</span></p>
                 <p class="mt-1 text-sm text-slate-500">{{ etiquetaMes }}</p>
-              </article>
-
-              <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Acumulado Anual (YTD)</p>
-                <p class="mt-2 text-3xl font-bold text-slate-900">{{ formatMoney(ytdMonto) }}</p>
-                <p class="mt-1 text-sm text-slate-500">Estimado {{ ytdYear }}</p>
               </article>
             </section>
 
@@ -123,6 +133,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { User, Wallet } from 'lucide-vue-next'
 import DeltaButton from '../components/common/DeltaButton.vue'
 import DeltaLogo from '../components/common/DeltaLogo.vue'
 import PayrollTable from '../components/common/PayrollTable.vue'

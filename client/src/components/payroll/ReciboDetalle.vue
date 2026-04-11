@@ -15,6 +15,10 @@
             <p class="text-xs text-gray-500">Parque Industrial Delta, Monterrey, N.L.</p>
           </div>
           <div class="flex flex-col items-start gap-3 sm:items-end">
+            <div class="text-left sm:text-right">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Earnings Statement</p>
+              <p class="text-base font-semibold text-slate-900">Delta Workforces Payroll</p>
+            </div>
             <div class="flex flex-wrap gap-2">
               <DeltaButton class="px-4 py-2 text-sm" variant="secondary" @click="$emit('back')">Volver</DeltaButton>
               <DeltaButton class="px-4 py-2 text-sm" @click="$emit('print')">
@@ -96,19 +100,19 @@
         </div>
 
         <div class="rounded-xl border border-slate-100 bg-white p-4">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-delta-blue">Deducciones</h3>
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-delta-blue">Summary</h3>
         <div class="space-y-2 text-sm text-gray-700">
           <div class="flex justify-between">
-            <span>Impuestos y retenciones</span>
-            <span class="font-semibold text-red-600">- ${{ formatCurrency(deducciones) }}</span>
+            <span>Gross Pay</span>
+            <span class="font-semibold text-slate-800">${{ formatCurrency(totalIngresos) }}</span>
           </div>
           <div class="flex justify-between">
-            <span>Seguro y prestaciones</span>
-            <span>$0.00</span>
+            <span>Deductions</span>
+            <span class="font-semibold text-red-600">- ${{ formatCurrency(deducciones) }}</span>
           </div>
           <div class="mt-4 flex justify-between border-t border-gray-200 pt-2 font-semibold text-delta-text">
-            <span>Total deducciones</span>
-            <span>${{ formatCurrency(deducciones) }}</span>
+            <span>Net Pay</span>
+            <span class="text-emerald-700">${{ formatCurrency(totalPagado) }}</span>
           </div>
         </div>
         </div>
@@ -133,6 +137,14 @@
             Acumulado anual (YTD): <span class="font-semibold text-slate-800">${{ formatCurrency(ytdTotal) }}</span>
           </p>
           </div>
+        </div>
+      </section>
+
+      <section class="mx-6 mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500 sm:mx-8">
+        <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <p><span class="font-semibold text-slate-700">Fecha de pago:</span> {{ recibo.fecha_pago }}</p>
+          <p v-if="checkNumber"><span class="font-semibold text-slate-700">Cheque:</span> {{ checkNumber }}</p>
+          <p v-else><span class="font-semibold text-slate-700">Cheque:</span> No especificado</p>
         </div>
       </section>
 
@@ -224,6 +236,7 @@ const pagoHora = computed(() => Number(props.recibo.detalles?.pago_hora || 0))
 const bonos = computed(() => Number(props.recibo.detalles?.bonos || 0))
 const deducciones = computed(() => Number(props.recibo.detalles?.deducciones || 0))
 const periodoPago = computed(() => String(props.recibo.detalles?.period || props.recibo.detalles?.periodo_pago || props.recibo.periodo || 'No especificado'))
+const checkNumber = computed(() => String(props.recibo.detalles?.check_number || props.recibo.detalles?.numero_cheque || props.recibo.detalles?.cheque || props.recibo.detalles?.checkNumber || '').trim())
 
 const totalPagado = computed(() => Number(props.recibo.detalles?.total_paid || props.recibo.monto || 0))
 

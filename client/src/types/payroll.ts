@@ -30,6 +30,8 @@ export interface Recibo {
   fecha_pago: string
   monto: number
   periodo: string
+  employeeId?: number
+  quickbooksId?: string
   estado?: string
   detalles: ReciboDetalles
   User?: ReciboEmpleado

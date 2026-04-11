@@ -1,4 +1,5 @@
-import { computed, ref } from 'vue'
+import axios from 'axios'
+import { ref } from 'vue'
 import { getRecibosAdmin, importarNominaAdmin, type NominaImportItemPayload } from '../api/admin'
 import type { Recibo } from '../types/payroll'
 
@@ -34,6 +35,49 @@ const parseNumber = (value: unknown): number => {
 
   const parsed = Number(sanitized)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+const toTitleCase = (value: string): string => {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+    .join(' ')
+}
+
+const inferEmployeeFromFileName = (fileName: string): { name: string; quickbooksId: string } => {
+  const cleanBase = fileName
+    .replace(/\.[^/.]+$/, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b(paystub|payslip|payroll|nomina|recibo)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  const name = cleanBase ? toTitleCase(cleanBase) : ''
+
+  return {
+    name,
+    quickbooksId: name.toUpperCase(),
+  }
+}
+
+interface ApiErrorPayload {
+  msg?: unknown
+  error?: unknown
+  message?: unknown
+}
+
+const resolveApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (!axios.isAxiosError(error)) {
+    return fallback
+  }
+
+  const payload = error.response?.data as ApiErrorPayload | undefined
+  const apiError = typeof payload?.error === 'string' ? payload.error.trim() : ''
+  const apiMsg = typeof payload?.msg === 'string' ? payload.msg.trim() : ''
+  const apiMessage = typeof payload?.message === 'string' ? payload.message.trim() : ''
+
+  return apiError || apiMsg || apiMessage || fallback
 }
 
 const normalizeHeader = (value: string): string => {
@@ -200,41 +244,13 @@ const parseDelimitedInput = (rawText: string): NominaImportItemPayload[] => {
   })
 }
 
-const toPreviewRecibo = (item: NominaImportItemPayload, index: number): Recibo => {
-  const detalles = item.desglose ?? {}
-  const horas = parseNumber(detalles.horas_regulares)
-  const pagoHora = parseNumber(detalles.pago_hora)
-  const bonos = parseNumber(detalles.bonos)
-  const deducciones = parseNumber(detalles.deducciones)
-
-  return {
-    id: -(index + 1),
-    fecha_pago: item.fecha,
-    monto: item.totalNeto,
-    periodo: item.periodo || 'Periodo no especificado',
-    estado: 'Vista previa',
-    User: {
-      nombre: item.nombre,
-      email: item.quickbooksId,
-    },
-    detalles: {
-      ...detalles,
-      horas_regulares: horas,
-      pago_hora: pagoHora,
-      bonos,
-      deducciones,
-      periodo_pago: String(detalles.periodo_pago || item.periodo || 'No especificado'),
-      cargo: String(detalles.cargo || 'No especificado'),
-    },
-  }
-}
-
-const readFileAsDataUrl = (file: File): Promise<string> => {
+const readFileAsDataUrlWithProgress = (file: File, onProgress?: (percent: number) => void): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
 
     reader.onload = () => {
       if (typeof reader.result === 'string') {
+        onProgress?.(100)
         resolve(reader.result)
         return
       }
@@ -246,8 +262,23 @@ const readFileAsDataUrl = (file: File): Promise<string> => {
       reject(new Error('No fue posible leer el archivo.'))
     }
 
+    reader.onprogress = (event) => {
+      if (!event.lengthComputable) {
+        return
+      }
+
+      const percent = Math.round((event.loaded / event.total) * 100)
+      onProgress?.(percent)
+    }
+
     reader.readAsDataURL(file)
   })
+}
+
+interface ImportNominaResult {
+  ok: boolean
+  linkedRecords: number
+  employeeName: string
 }
 
 export const useAdminPayroll = () => {
@@ -257,139 +288,151 @@ export const useAdminPayroll = () => {
   const defaultEmployeeQuickbooksId = ref('')
   const search = ref('')
 
-  const parsedItems = ref<NominaImportItemPayload[]>([])
-  const previewRecibos = ref<Recibo[]>([])
   const recibosExistentes = ref<Recibo[]>([])
   const reciboSeleccionado = ref<Recibo | null>(null)
 
-  const loadingPreview = ref(false)
   const loadingImport = ref(false)
+  const importProgress = ref(0)
   const loadingSearch = ref(false)
 
   const errorMessage = ref('')
   const successMessage = ref('')
-
-  const validItems = computed(() => {
-    return parsedItems.value.filter((item) => item.quickbooksId && item.nombre && item.fecha)
-  })
 
   const limpiarMensajes = () => {
     errorMessage.value = ''
     successMessage.value = ''
   }
 
-  const generarPreview = () => {
-    limpiarMensajes()
-    loadingPreview.value = true
-
-    try {
-      if (selectedExcelFile.value) {
-        parsedItems.value = []
-        previewRecibos.value = []
-        successMessage.value = 'Archivo Excel seleccionado. Haz clic en "Importar Nómina de la Semana" para procesarlo.'
-        return
-      }
-
-      const text = rawInput.value.trim()
-
-      if (!text) {
-        parsedItems.value = []
-        previewRecibos.value = []
-        errorMessage.value = 'Pega un CSV/TSV o JSON para generar la vista previa.'
-        return
-      }
-
-      const parsed = text.startsWith('[') ? parseJsonInput(text) : parseDelimitedInput(text)
-
-      if (!parsed.length) {
-        parsedItems.value = []
-        previewRecibos.value = []
-        errorMessage.value = 'No fue posible interpretar los datos pegados.'
-        return
-      }
-
-      parsedItems.value = parsed
-      previewRecibos.value = parsed.map(toPreviewRecibo)
-      reciboSeleccionado.value = previewRecibos.value[0] ?? null
-
-      if (!validItems.value.length) {
-        errorMessage.value = 'Se detectaron filas incompletas. Revisa quickbooksId, nombre y fecha.'
-      } else {
-        successMessage.value = `Vista previa lista: ${validItems.value.length} registro(s) válidos.`
-      }
-    } finally {
-      loadingPreview.value = false
-    }
-  }
-
-  const importarNomina = async () => {
+  const importarNomina = async (): Promise<ImportNominaResult> => {
     limpiarMensajes()
 
     const hasExcelFile = Boolean(selectedExcelFile.value)
 
     if (hasExcelFile && selectedExcelFile.value) {
       loadingImport.value = true
+      importProgress.value = 5
 
       try {
-        const excelBase64 = await readFileAsDataUrl(selectedExcelFile.value)
+        const sourceEmployeeName = defaultEmployeeName.value.trim()
+        const excelBase64 = await readFileAsDataUrlWithProgress(selectedExcelFile.value, (percent) => {
+          importProgress.value = Math.max(5, Math.min(55, Math.round(5 + percent * 0.5)))
+        })
+        importProgress.value = 65
+
         const payload = {
           excelBase64,
           excelFileName: selectedExcelFile.value.name,
-          defaultEmployeeName: defaultEmployeeName.value.trim() || undefined,
+          defaultEmployeeName: sourceEmployeeName || undefined,
           defaultEmployeeQuickbooksId: defaultEmployeeQuickbooksId.value.trim() || undefined,
         }
 
         const response = await importarNominaAdmin(payload)
+        importProgress.value = 100
 
         successMessage.value = `${response.msg}. Creados: ${response.resumen.recibosCreados}, actualizados: ${response.resumen.recibosActualizados}, usuarios nuevos: ${response.resumen.usuariosNuevos}.`
+
+        const linkedRecords = Math.max(
+          response.resumen.registrosProcesados || 0,
+          (response.resumen.recibosCreados || 0) + (response.resumen.recibosActualizados || 0),
+        )
 
         selectedExcelFile.value = null
 
         await cargarRecibosAdmin(search.value)
-        return true
-      } catch {
-        errorMessage.value = 'No fue posible importar el archivo Excel.'
-        return false
+        return {
+          ok: true,
+          linkedRecords,
+          employeeName: sourceEmployeeName || 'empleado',
+        }
+      } catch (error) {
+        errorMessage.value = resolveApiErrorMessage(error, 'No fue posible importar el archivo Excel.')
+        return {
+          ok: false,
+          linkedRecords: 0,
+          employeeName: '',
+        }
       } finally {
         loadingImport.value = false
+        importProgress.value = 0
       }
     }
 
-    if (!parsedItems.value.length) {
-      generarPreview()
+    const text = rawInput.value.trim()
+
+    if (!text) {
+      errorMessage.value = 'Pega un CSV/TSV o JSON para importar la nómina.'
+      return {
+        ok: false,
+        linkedRecords: 0,
+        employeeName: '',
+      }
     }
 
-    if (!validItems.value.length) {
+    const parsed = text.startsWith('[') ? parseJsonInput(text) : parseDelimitedInput(text)
+
+    if (!parsed.length) {
+      errorMessage.value = 'No fue posible interpretar los datos pegados.'
+      return {
+        ok: false,
+        linkedRecords: 0,
+        employeeName: '',
+      }
+    }
+
+    const validItems = parsed.filter((item) => item.quickbooksId && item.nombre && item.fecha)
+
+    if (!validItems.length) {
       errorMessage.value = 'No hay registros válidos para importar.'
-      return false
+      return {
+        ok: false,
+        linkedRecords: 0,
+        employeeName: '',
+      }
     }
 
     loadingImport.value = true
+    importProgress.value = 35
 
     try {
       const payload = {
-        nominaData: validItems.value,
+        nominaData: validItems,
       }
 
       const response = await importarNominaAdmin(payload)
+      importProgress.value = 100
 
       successMessage.value = `${response.msg}. Creados: ${response.resumen.recibosCreados}, actualizados: ${response.resumen.recibosActualizados}, usuarios nuevos: ${response.resumen.usuariosNuevos}.`
 
       await cargarRecibosAdmin(search.value)
-      return true
-    } catch {
-      errorMessage.value = 'No fue posible importar la nómina.'
-      return false
+
+      const linkedRecords = Math.max(
+        response.resumen.registrosProcesados || 0,
+        (response.resumen.recibosCreados || 0) + (response.resumen.recibosActualizados || 0),
+      )
+
+      return {
+        ok: true,
+        linkedRecords,
+        employeeName: defaultEmployeeName.value.trim() || validItems[0]?.nombre || 'empleado',
+      }
+    } catch (error) {
+      errorMessage.value = resolveApiErrorMessage(error, 'No fue posible importar la nómina.')
+      return {
+        ok: false,
+        linkedRecords: 0,
+        employeeName: '',
+      }
     } finally {
       loadingImport.value = false
+      importProgress.value = 0
     }
   }
 
-  const cargarRecibosAdmin = async (query = '') => {
+  const cargarRecibosAdmin = async (query = '', limit = 4) => {
     loadingSearch.value = true
 
     try {
-      const data = await getRecibosAdmin(query)
+      const data = await getRecibosAdmin(query, limit)
       recibosExistentes.value = data
 
       if (!reciboSeleccionado.value && data.length) {
@@ -412,8 +455,6 @@ export const useAdminPayroll = () => {
     selectedExcelFile.value = null
     defaultEmployeeName.value = ''
     defaultEmployeeQuickbooksId.value = ''
-    parsedItems.value = []
-    previewRecibos.value = []
     limpiarMensajes()
   }
 
@@ -421,11 +462,17 @@ export const useAdminPayroll = () => {
     selectedExcelFile.value = file
 
     if (file) {
+      const inferred = inferEmployeeFromFileName(file.name)
+
+      defaultEmployeeName.value = inferred.name
+      defaultEmployeeQuickbooksId.value = inferred.quickbooksId
       rawInput.value = ''
-      parsedItems.value = []
-      previewRecibos.value = []
       limpiarMensajes()
+      return
     }
+
+    defaultEmployeeName.value = ''
+    defaultEmployeeQuickbooksId.value = ''
   }
 
   return {
@@ -434,16 +481,13 @@ export const useAdminPayroll = () => {
     defaultEmployeeName,
     defaultEmployeeQuickbooksId,
     search,
-    previewRecibos,
     recibosExistentes,
     reciboSeleccionado,
-    loadingPreview,
     loadingImport,
+    importProgress,
     loadingSearch,
     errorMessage,
     successMessage,
-    validItems,
-    generarPreview,
     importarNomina,
     cargarRecibosAdmin,
     seleccionarRecibo,

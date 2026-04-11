@@ -19,7 +19,7 @@
 
     <div class="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-white/92 p-10 shadow-2xl shadow-slate-950/40 backdrop-blur-xl">
       <div class="mb-8 flex justify-center px-4 pt-4 pb-3">
-        <DeltaLogo size="xl" centered />
+        <DeltaLogo size="2xl" centered />
       </div>
 
       <h1 class="mb-2 text-3xl font-bold text-delta-text">Acceso de Empleado</h1>

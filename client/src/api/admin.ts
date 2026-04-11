@@ -43,6 +43,11 @@ interface CreateEmployeeByAdminResponse {
   }
 }
 
+interface DeleteEmployeeRecordsResponse {
+  msg: string
+  deletedCount: number
+}
+
 export const importarNominaAdmin = async (payload: {
   nominaData?: NominaImportItemPayload[]
   csv?: string
@@ -69,5 +74,10 @@ export const getRecibosAdmin = async (search = '', limit = 4) => {
 
 export const createEmployeeAdmin = async (payload: CreateEmployeeByAdminPayload) => {
   const { data } = await http.post<CreateEmployeeByAdminResponse>('/admin/empleados', payload)
+  return data
+}
+
+export const deleteEmployeePaymentRecordsAdmin = async (employeeId: number) => {
+  const { data } = await http.delete<DeleteEmployeeRecordsResponse>(`/admin/empleados/${employeeId}/recibos`)
   return data
 }
