@@ -106,11 +106,27 @@
               </button>
               <button
                 type="button"
+                class="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="deletingEmployeeId === empleado.employeeId"
+                @click="emit('change-password', empleado)"
+              >
+                Change password
+              </button>
+              <button
+                type="button"
                 class="w-full rounded-lg px-3 py-2 text-left text-sm text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="deletingEmployeeId === empleado.employeeId"
                 @click="emit('delete-records', empleado)"
               >
                 {{ deletingEmployeeId === empleado.employeeId ? 'Deleting...' : 'Delete records' }}
+              </button>
+              <button
+                type="button"
+                class="w-full rounded-lg px-3 py-2 text-left text-sm text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="deletingEmployeeId === empleado.employeeId"
+                @click="emit('delete-employee', empleado)"
+              >
+                {{ deletingEmployeeId === empleado.employeeId ? 'Deleting...' : 'Delete employee' }}
               </button>
             </div>
           </div>
@@ -169,6 +185,8 @@ const emit = defineEmits<{
   (event: 'close-menu'): void
   (event: 'toggle-menu', employeeId: number): void
   (event: 'open-history', employeeId: number): void
+  (event: 'change-password', empleado: EmpleadoGridItem): void
   (event: 'delete-records', empleado: EmpleadoGridItem): void
+  (event: 'delete-employee', empleado: EmpleadoGridItem): void
 }>()
 </script>

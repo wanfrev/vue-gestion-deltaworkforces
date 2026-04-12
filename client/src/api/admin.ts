@@ -56,6 +56,20 @@ interface DeleteEmployeeRecordsResponse {
   deletedCount: number
 }
 
+interface UpdateEmployeePasswordAdminResponse {
+  msg: string
+  employeeId: number
+}
+
+interface DeleteEmployeeAdminResponse {
+  msg: string
+  deletedRecords: number
+  employee: {
+    id: number
+    nombre: string
+  }
+}
+
 export const importarNominaAdmin = async (payload: {
   nominaData?: NominaImportItemPayload[]
   csv?: string
@@ -87,5 +101,18 @@ export const createEmployeeAdmin = async (payload: CreateEmployeeByAdminPayload)
 
 export const deleteEmployeePaymentRecordsAdmin = async (employeeId: number) => {
   const { data } = await http.delete<DeleteEmployeeRecordsResponse>(`/admin/empleados/${employeeId}/recibos`)
+  return data
+}
+
+export const updateEmployeePasswordAdmin = async (employeeId: number, password: string) => {
+  const { data } = await http.patch<UpdateEmployeePasswordAdminResponse>(`/admin/empleados/${employeeId}/password`, {
+    password,
+  })
+
+  return data
+}
+
+export const deleteEmployeeAdmin = async (employeeId: number) => {
+  const { data } = await http.delete<DeleteEmployeeAdminResponse>(`/admin/empleados/${employeeId}`)
   return data
 }

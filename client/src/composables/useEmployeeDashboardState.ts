@@ -2,6 +2,7 @@ import { computed, nextTick, ref, type Ref } from 'vue'
 import type { Recibo } from '../types/payroll'
 
 export type EmployeeSection = 'mis-pagos' | 'mi-perfil'
+export type ReceiptLimitOption = 'all' | 1 | 2 | 3 | 4
 
 interface UseEmployeeDashboardStateOptions {
   recibos: Ref<Recibo[]>
@@ -41,8 +42,13 @@ export const useEmployeeDashboardState = ({
 }: UseEmployeeDashboardStateOptions) => {
   const downloadingReciboId = ref<number | null>(null)
   const seccionActiva = ref<EmployeeSection>('mis-pagos')
-  const limiteRecibos = ref(4)
-  const opcionesLimiteRecibos = [1, 2, 3, 4, 8, 12, 24, 50]
+  const limiteRecibos = ref<ReceiptLimitOption>('all')
+  const opcionesLimiteRecibos: ReceiptLimitOption[] = ['all', 1, 2, 3, 4]
+
+  const resolveReceiptLimit = (value: ReceiptLimitOption): number => {
+    // Backend caps requests at 200, so "all" maps to the maximum supported value.
+    return value === 'all' ? 200 : value
+  }
 
   const nombreCorto = computed(() => {
     const nombreCompleto = authNombre.value?.trim()
@@ -129,12 +135,12 @@ export const useEmployeeDashboardState = ({
   }
 
   const cargarInicialRecibos = async () => {
-    await cargarRecibos(limiteRecibos.value)
+    await cargarRecibos(resolveReceiptLimit(limiteRecibos.value))
   }
 
   const cambiarLimiteRecibos = async () => {
     limpiarReciboSeleccionado()
-    await cargarRecibos(limiteRecibos.value)
+    await cargarRecibos(resolveReceiptLimit(limiteRecibos.value))
   }
 
   const imprimirReciboEnPantalla = () => {

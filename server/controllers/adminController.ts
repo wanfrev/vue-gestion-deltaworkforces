@@ -1439,3 +1439,115 @@ export const deleteEmployeePaymentRecords = async (req: Request, res: Response) 
     return res.status(500).json({ msg: 'No fue posible eliminar los registros del empleado.' })
   }
 }
+
+export const updateEmployeePasswordByAdmin = async (req: Request, res: Response) => {
+  try {
+    const employeeId = Number(req.params.employeeId)
+    const password = String(req.body?.password ?? '')
+
+    if (!Number.isInteger(employeeId) || employeeId <= 0) {
+      return res.status(400).json({ msg: 'employeeId inválido.' })
+    }
+
+    if (!password.trim() || password.trim().length < 8) {
+      return res.status(400).json({ msg: 'La contraseña debe tener al menos 8 caracteres.' })
+    }
+
+    const employee = await Employee.findByPk(employeeId)
+
+    if (!employee) {
+      return res.status(404).json({ msg: 'Empleado no encontrado.' })
+    }
+
+    const userId = Number(employee.getDataValue('user_id') || 0)
+
+    if (!userId) {
+      return res.status(404).json({ msg: 'Usuario asociado no encontrado.' })
+    }
+
+    const user = await User.findOne({
+      where: {
+        id: userId,
+        role: ROLES.EMPLEADO,
+      },
+    })
+
+    if (!user) {
+      return res.status(404).json({ msg: 'Usuario empleado no encontrado.' })
+    }
+
+    const passwordHash = await bcrypt.hash(password.trim(), 10)
+    user.set('password_hash', passwordHash)
+    await user.save()
+
+    return res.json({
+      msg: 'Contraseña actualizada correctamente.',
+      employeeId,
+    })
+  } catch {
+    return res.status(500).json({ msg: 'No fue posible actualizar la contraseña del empleado.' })
+  }
+}
+
+export const deleteEmployeeByAdmin = async (req: Request, res: Response) => {
+  const transaction = await sequelize.transaction()
+
+  try {
+    const employeeId = Number(req.params.employeeId)
+
+    if (!Number.isInteger(employeeId) || employeeId <= 0) {
+      await transaction.rollback()
+      return res.status(400).json({ msg: 'employeeId inválido.' })
+    }
+
+    const employee = await Employee.findByPk(employeeId, { transaction })
+
+    if (!employee) {
+      await transaction.rollback()
+      return res.status(404).json({ msg: 'Empleado no encontrado.' })
+    }
+
+    const userId = Number(employee.getDataValue('user_id') || 0)
+
+    if (!userId) {
+      await transaction.rollback()
+      return res.status(404).json({ msg: 'Usuario asociado no encontrado.' })
+    }
+
+    const employeeName = `${String(employee.getDataValue('first_name') ?? '').trim()} ${String(
+      employee.getDataValue('last_name') ?? '',
+    ).trim()}`.trim()
+
+    const deletedRecords = await PaymentRecord.count({
+      where: { employee_id: employeeId },
+      transaction,
+    })
+
+    const deletedUsers = await User.destroy({
+      where: {
+        id: userId,
+        role: ROLES.EMPLEADO,
+      },
+      transaction,
+    })
+
+    if (deletedUsers === 0) {
+      await transaction.rollback()
+      return res.status(404).json({ msg: 'Usuario empleado no encontrado.' })
+    }
+
+    await transaction.commit()
+
+    return res.json({
+      msg: 'Empleado eliminado correctamente.',
+      employee: {
+        id: employeeId,
+        nombre: employeeName || 'Empleado',
+      },
+      deletedRecords,
+    })
+  } catch {
+    await transaction.rollback()
+    return res.status(500).json({ msg: 'No fue posible eliminar al empleado.' })
+  }
+}

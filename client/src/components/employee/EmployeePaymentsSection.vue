@@ -43,7 +43,7 @@
           @change="onChangeLimit"
         >
           <option v-for="option in opcionesLimiteRecibos" :key="`limite-${option}`" :value="option">
-            {{ option }}
+            {{ option === 'all' ? 'All' : option }}
           </option>
         </select>
         <span class="text-sm text-slate-500">receipts</span>
@@ -56,7 +56,12 @@
         @view-details="emit('view-details', $event)"
         @download-pdf="emit('download-pdf', $event)"
       />
-      <p class="mt-6 text-center text-sm italic text-slate-500">Showing the latest {{ recibos.length }} receipts (limit {{ limiteRecibos }}).</p>
+      <p v-if="limiteRecibos === 'all'" class="mt-6 text-center text-sm italic text-slate-500">
+        Showing all available receipts ({{ recibos.length }}).
+      </p>
+      <p v-else class="mt-6 text-center text-sm italic text-slate-500">
+        Showing the latest {{ recibos.length }} receipts (limit {{ limiteRecibos }}).
+      </p>
     </template>
   </section>
 </template>
@@ -65,6 +70,7 @@
 import PayrollTable from '../common/PayrollTable.vue'
 import ReciboDetalle from '../payroll/ReciboDetalle.vue'
 import type { Recibo } from '../../types/payroll'
+import type { ReceiptLimitOption } from '../../composables/useEmployeeDashboardState'
 
 defineProps<{
   ytdYear: string
@@ -77,12 +83,12 @@ defineProps<{
   recibos: Recibo[]
   loading: boolean
   downloadingReciboId: number | null
-  limiteRecibos: number
-  opcionesLimiteRecibos: number[]
+  limiteRecibos: ReceiptLimitOption
+  opcionesLimiteRecibos: ReceiptLimitOption[]
 }>()
 
 const emit = defineEmits<{
-  (event: 'update:limiteRecibos', value: number): void
+  (event: 'update:limiteRecibos', value: ReceiptLimitOption): void
   (event: 'change-limit'): void
   (event: 'clear-selected'): void
   (event: 'print-selected'): void
@@ -91,7 +97,8 @@ const emit = defineEmits<{
 }>()
 
 const onChangeLimit = (event: Event) => {
-  const value = Number((event.target as HTMLSelectElement).value)
+  const rawValue = (event.target as HTMLSelectElement).value
+  const value = rawValue === 'all' ? 'all' : (Number(rawValue) as ReceiptLimitOption)
 
   emit('update:limiteRecibos', value)
   emit('change-limit')

@@ -1,5 +1,10 @@
 import { ref } from 'vue'
-import { createEmployeeAdmin, deleteEmployeePaymentRecordsAdmin } from '../api/admin'
+import {
+  createEmployeeAdmin,
+  deleteEmployeeAdmin,
+  deleteEmployeePaymentRecordsAdmin,
+  updateEmployeePasswordAdmin,
+} from '../api/admin'
 
 interface EmployeeFormState {
   username: string
@@ -23,7 +28,6 @@ interface UseAdminUserManagementOptions {
   setSuccessMessage: (message: string) => void
   setErrorMessage: (message: string) => void
   cargarRecibosAdmin: (query?: string, limit?: number) => Promise<void>
-  cerrarMenuEmpleado: () => void
 }
 
 export const useAdminUserManagement = ({
@@ -31,7 +35,6 @@ export const useAdminUserManagement = ({
   setSuccessMessage,
   setErrorMessage,
   cargarRecibosAdmin,
-  cerrarMenuEmpleado,
 }: UseAdminUserManagementOptions) => {
   const creatingEmployee = ref(false)
   const deletingEmployeeId = ref<number | null>(null)
@@ -120,15 +123,8 @@ export const useAdminUserManagement = ({
     }
   }
 
-  const borrarRegistrosEmpleado = async (employeeId: number, nombre: string, registros: number) => {
-    const confirmado = window.confirm(
-      `${registros} payroll record(s) for ${nombre} will be deleted. This action cannot be undone.`,
-    )
-
-    if (!confirmado) {
-      return
-    }
-
+  const borrarRegistrosEmpleado = async (employeeId: number) => {
+    limpiarMensajes()
     deletingEmployeeId.value = employeeId
 
     try {
@@ -144,8 +140,46 @@ export const useAdminUserManagement = ({
   }
 
   const eliminarRegistrosDesdeMenu = async (empleado: DeleteEmployeeCandidate) => {
-    cerrarMenuEmpleado()
-    await borrarRegistrosEmpleado(empleado.employeeId, empleado.nombre, empleado.registros)
+    await borrarRegistrosEmpleado(empleado.employeeId)
+  }
+
+  const cambiarPasswordDesdeMenu = async (empleado: DeleteEmployeeCandidate, nextPassword: string) => {
+    limpiarMensajes()
+    const normalized = nextPassword.trim()
+
+    if (normalized.length < 8) {
+      setErrorMessage('The new password must have at least 8 characters.')
+      return
+    }
+
+    deletingEmployeeId.value = empleado.employeeId
+
+    try {
+      await updateEmployeePasswordAdmin(empleado.employeeId, normalized)
+      setSuccessMessage(`Password updated successfully for ${empleado.nombre}.`)
+    } catch (error) {
+      void error
+      setErrorMessage('Could not update employee password.')
+    } finally {
+      deletingEmployeeId.value = null
+    }
+  }
+
+  const eliminarEmpleadoDesdeMenu = async (empleado: DeleteEmployeeCandidate) => {
+    limpiarMensajes()
+
+    deletingEmployeeId.value = empleado.employeeId
+
+    try {
+      const response = await deleteEmployeeAdmin(empleado.employeeId)
+      setSuccessMessage(`Employee deleted successfully. Records removed: ${response.deletedRecords}.`)
+      await cargarRecibosAdmin('', 200)
+    } catch (error) {
+      void error
+      setErrorMessage('Could not delete employee.')
+    } finally {
+      deletingEmployeeId.value = null
+    }
   }
 
   return {
@@ -156,5 +190,7 @@ export const useAdminUserManagement = ({
     limpiarFormularioEmpleado,
     crearEmpleado,
     eliminarRegistrosDesdeMenu,
+    cambiarPasswordDesdeMenu,
+    eliminarEmpleadoDesdeMenu,
   }
 }

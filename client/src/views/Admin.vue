@@ -51,7 +51,9 @@
               @close-menu="cerrarMenuEmpleado"
               @toggle-menu="alternarMenuEmpleado"
               @open-history="abrirHistorialEmpleado"
-              @delete-records="eliminarRegistrosDesdeMenu"
+              @change-password="solicitarCambioPassword"
+              @delete-records="solicitarEliminarRegistros"
+              @delete-employee="solicitarEliminarEmpleado"
             />
 
             <div class="mt-4">
@@ -96,16 +98,48 @@
         <p class="text-xs font-semibold uppercase tracking-wide text-emerald-600">Import complete</p>
         <p class="mt-1 text-sm font-medium text-slate-800">{{ toast.message }}</p>
       </div>
+
+      <AdminConfirmCard
+        :visible="confirmDeleteRecordsVisible"
+        title="Delete payroll records"
+        :description="confirmDeleteRecordsText"
+        confirm-label="Delete records"
+        :danger="true"
+        :loading="modalActionLoading"
+        @cancel="cerrarModalesAccion"
+        @confirm="confirmarEliminarRegistros"
+      />
+
+      <AdminConfirmCard
+        :visible="confirmDeleteEmployeeVisible"
+        title="Delete employee"
+        :description="confirmDeleteEmployeeText"
+        confirm-label="Delete employee"
+        :danger="true"
+        :loading="modalActionLoading"
+        @cancel="cerrarModalesAccion"
+        @confirm="confirmarEliminarEmpleado"
+      />
+
+      <AdminPasswordCard
+        :visible="changePasswordVisible"
+        :employee-name="selectedEmployeeAction?.nombre || 'Employee'"
+        :loading="modalActionLoading"
+        @cancel="cerrarModalesAccion"
+        @confirm="confirmarCambioPassword"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import AdminAlerts from '../components/admin/AdminAlerts.vue'
+import AdminConfirmCard from '../components/admin/AdminConfirmCard.vue'
 import AdminCreateUserSection from '../components/admin/AdminCreateUserSection.vue'
 import AdminEmployeesOverviewSection from '../components/admin/AdminEmployeesOverviewSection.vue'
 import AdminHeader from '../components/admin/AdminHeader.vue'
+import AdminPasswordCard from '../components/admin/AdminPasswordCard.vue'
 import AdminPaymentsHistorySection from '../components/admin/AdminPaymentsHistorySection.vue'
 import AdminPayrollImportSection from '../components/admin/AdminPayrollImportSection.vue'
 import AdminSidebar from '../components/admin/AdminSidebar.vue'
@@ -176,6 +210,8 @@ const {
   limpiarFormularioEmpleado,
   crearEmpleado,
   eliminarRegistrosDesdeMenu,
+  cambiarPasswordDesdeMenu,
+  eliminarEmpleadoDesdeMenu,
 } = useAdminUserManagement({
   limpiarMensajes,
   setSuccessMessage: (message) => {
@@ -185,7 +221,36 @@ const {
     errorMessage.value = message
   },
   cargarRecibosAdmin,
-  cerrarMenuEmpleado,
+})
+
+interface EmployeeActionCandidate {
+  employeeId: number
+  nombre: string
+  registros: number
+}
+
+const selectedEmployeeAction = ref<EmployeeActionCandidate | null>(null)
+const confirmDeleteRecordsVisible = ref(false)
+const confirmDeleteEmployeeVisible = ref(false)
+const changePasswordVisible = ref(false)
+const modalActionLoading = ref(false)
+
+const confirmDeleteRecordsText = computed(() => {
+  if (!selectedEmployeeAction.value) {
+    return ''
+  }
+
+  const { nombre, registros } = selectedEmployeeAction.value
+  return `${registros} payroll record(s) for ${nombre} will be deleted. This action cannot be undone.`
+})
+
+const confirmDeleteEmployeeText = computed(() => {
+  if (!selectedEmployeeAction.value) {
+    return ''
+  }
+
+  const { nombre } = selectedEmployeeAction.value
+  return `Delete employee ${nombre}? This will remove the user profile and all linked payroll records. This action cannot be undone.`
 })
 
 const toast = ref({
@@ -261,6 +326,86 @@ const updateRawInput = (value: string) => {
 
 const updateSearch = (value: string) => {
   search.value = value
+}
+
+const cerrarModalesAccion = () => {
+  if (modalActionLoading.value) {
+    return
+  }
+
+  selectedEmployeeAction.value = null
+  confirmDeleteRecordsVisible.value = false
+  confirmDeleteEmployeeVisible.value = false
+  changePasswordVisible.value = false
+}
+
+const solicitarEliminarRegistros = (empleado: EmployeeActionCandidate) => {
+  cerrarMenuEmpleado()
+  selectedEmployeeAction.value = empleado
+  confirmDeleteEmployeeVisible.value = false
+  changePasswordVisible.value = false
+  confirmDeleteRecordsVisible.value = true
+}
+
+const solicitarEliminarEmpleado = (empleado: EmployeeActionCandidate) => {
+  cerrarMenuEmpleado()
+  selectedEmployeeAction.value = empleado
+  confirmDeleteRecordsVisible.value = false
+  changePasswordVisible.value = false
+  confirmDeleteEmployeeVisible.value = true
+}
+
+const solicitarCambioPassword = (empleado: EmployeeActionCandidate) => {
+  cerrarMenuEmpleado()
+  selectedEmployeeAction.value = empleado
+  confirmDeleteRecordsVisible.value = false
+  confirmDeleteEmployeeVisible.value = false
+  changePasswordVisible.value = true
+}
+
+const confirmarEliminarRegistros = async () => {
+  if (!selectedEmployeeAction.value) {
+    return
+  }
+
+  modalActionLoading.value = true
+
+  try {
+    await eliminarRegistrosDesdeMenu(selectedEmployeeAction.value)
+    cerrarModalesAccion()
+  } finally {
+    modalActionLoading.value = false
+  }
+}
+
+const confirmarEliminarEmpleado = async () => {
+  if (!selectedEmployeeAction.value) {
+    return
+  }
+
+  modalActionLoading.value = true
+
+  try {
+    await eliminarEmpleadoDesdeMenu(selectedEmployeeAction.value)
+    cerrarModalesAccion()
+  } finally {
+    modalActionLoading.value = false
+  }
+}
+
+const confirmarCambioPassword = async (password: string) => {
+  if (!selectedEmployeeAction.value) {
+    return
+  }
+
+  modalActionLoading.value = true
+
+  try {
+    await cambiarPasswordDesdeMenu(selectedEmployeeAction.value, password)
+    cerrarModalesAccion()
+  } finally {
+    modalActionLoading.value = false
+  }
 }
 
 const cambiarSeccion = (seccion: AdminSection) => {
