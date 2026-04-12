@@ -15,7 +15,7 @@
           to="/dashboard"
           class="rounded-lg border border-transparent px-3 py-2 text-sm font-semibold text-delta-blue transition hover:border-delta-blue/20 hover:bg-delta-gray"
         >
-          Mis Recibos
+          My Receipts
         </RouterLink>
         <RouterLink
           v-if="canSeeAdminNav"
@@ -24,7 +24,7 @@
         >
           Admin
         </RouterLink>
-        <DeltaButton v-if="showLogout" @click="$emit('logout')">Cerrar Sesión</DeltaButton>
+        <DeltaButton v-if="showLogout" @click="$emit('logout')">Sign out</DeltaButton>
       </div>
     </div>
   </header>

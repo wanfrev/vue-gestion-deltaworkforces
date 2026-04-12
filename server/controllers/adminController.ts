@@ -35,6 +35,13 @@ interface RawNominaRecord {
   [key: string]: unknown
 }
 
+interface AutoCreatedUserSummary {
+  nombre: string
+  username: string
+  passwordTemporal: string
+  quickbooksId: string
+}
+
 const parseNumber = (value: unknown): number => {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? value : 0
@@ -169,6 +176,134 @@ const toTitleCase = (value: string): string => {
     .filter(Boolean)
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
     .join(' ')
+}
+
+const normalizeUsernameToken = (value: string): string => {
+  return normalizeText(value).replace(/[^a-z0-9]/g, '')
+}
+
+const extractNamesFromNominaItem = (item: NominaImportItem): { firstName: string; lastName: string } | null => {
+  const source = String(item.nombre || item.quickbooksId || '').trim()
+
+  if (!source) {
+    return null
+  }
+
+  const parts = source.split(/\s+/).filter(Boolean)
+
+  if (!parts.length) {
+    return null
+  }
+
+  const firstName = toTitleCase(parts[0])
+  const lastName = toTitleCase(parts.slice(1).join(' ')) || 'Empleado'
+
+  return { firstName, lastName }
+}
+
+const buildQuickbooksIdCandidate = (item: NominaImportItem, names: { firstName: string; lastName: string }): string => {
+  const directQuickbooksId = String(item.quickbooksId || '').trim()
+
+  if (directQuickbooksId) {
+    return directQuickbooksId
+  }
+
+  return `${names.firstName} ${names.lastName}`.trim()
+}
+
+const generateUniqueUsername = async (
+  firstName: string,
+  lastName: string,
+  transaction: Transaction,
+): Promise<string> => {
+  const firstToken = normalizeUsernameToken(firstName)
+  const lastToken = normalizeUsernameToken(lastName)
+  const baseUsername = [firstToken, lastToken].filter(Boolean).join('.') || 'empleado.delta'
+
+  let attempt = 0
+
+  while (attempt < 1000) {
+    const candidate = attempt === 0 ? baseUsername : `${baseUsername}${attempt}`
+
+    const exists = await User.findOne({
+      where: {
+        username: {
+          [Op.iLike]: candidate,
+        },
+      },
+      transaction,
+    })
+
+    if (!exists) {
+      return candidate
+    }
+
+    attempt += 1
+  }
+
+  throw new Error('No fue posible generar un username único para el empleado importado.')
+}
+
+const autoCreateEmployeeFromNominaItem = async (
+  item: NominaImportItem,
+  transaction: Transaction,
+) => {
+  const names = extractNamesFromNominaItem(item)
+
+  if (!names) {
+    return { employee: null }
+  }
+
+  const quickbooksId = buildQuickbooksIdCandidate(item, names)
+
+  const existingEmployee = await Employee.findOne({
+    where: {
+      quickbooks_id: {
+        [Op.iLike]: quickbooksId,
+      },
+    },
+    transaction,
+  })
+
+  if (existingEmployee) {
+    return { employee: existingEmployee }
+  }
+
+  const username = await generateUniqueUsername(names.firstName, names.lastName, transaction)
+  const passwordBase = normalizeUsernameToken(names.firstName) || 'empleado'
+  const passwordTemporal = `${passwordBase}123`
+  const passwordHash = await bcrypt.hash(passwordTemporal, 10)
+
+  const newUser = await User.create(
+    {
+      username,
+      password_hash: passwordHash,
+      role: ROLES.EMPLEADO,
+    },
+    { transaction },
+  )
+
+  const newEmployee = await Employee.create(
+    {
+      user_id: Number(newUser.getDataValue('id')),
+      quickbooks_id: quickbooksId,
+      first_name: names.firstName,
+      last_name: names.lastName,
+      position: null,
+      base_salary: null,
+    },
+    { transaction },
+  )
+
+  return {
+    employee: newEmployee,
+    createdUser: {
+      nombre: `${names.firstName} ${names.lastName}`.trim(),
+      username,
+      passwordTemporal,
+      quickbooksId,
+    },
+  }
 }
 
 const stripExcelDataUriPrefix = (value: string): string => {
@@ -954,7 +1089,9 @@ export const importarNomina = async (req: Request, res: Response) => {
 
     let recibosCreados = 0
     let recibosActualizados = 0
+    let usuariosNuevos = 0
     const identificadoresNoEncontrados = new Set<string>()
+    const usuariosAutoCreados: AutoCreatedUserSummary[] = []
 
     await sequelize.transaction(async (transaction) => {
       for (const rawItem of items) {
@@ -964,7 +1101,17 @@ export const importarNomina = async (req: Request, res: Response) => {
           throw new Error('Registro inválido: se requiere fecha y al menos quickbooksId o nombre.')
         }
 
-        const employee = await findEmployeeByHybridMatch(item, transaction)
+        let employee = await findEmployeeByHybridMatch(item, transaction)
+
+        if (!employee) {
+          const autoCreated = await autoCreateEmployeeFromNominaItem(item, transaction)
+          employee = autoCreated.employee
+
+          if (autoCreated.createdUser) {
+            usuariosNuevos += 1
+            usuariosAutoCreados.push(autoCreated.createdUser)
+          }
+        }
 
         if (!employee) {
           identificadoresNoEncontrados.add(item.quickbooksId || item.nombre)
@@ -1033,11 +1180,12 @@ export const importarNomina = async (req: Request, res: Response) => {
           : 'Nómina importada exitosamente',
       resumen: {
         registrosProcesados: items.length,
-        usuariosNuevos: 0,
+        usuariosNuevos,
         recibosCreados,
         recibosActualizados,
         registrosOmitidos: identificadoresNoEncontrados.size,
       },
+      usuariosAutoCreados,
       errores: Array.from(identificadoresNoEncontrados).map((identifier) => {
         return `No se encontró empleado para el identificador "${identifier}".`
       }),

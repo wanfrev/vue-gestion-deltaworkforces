@@ -1,20 +1,13 @@
 import { ref } from 'vue'
-import axios from 'axios'
 import { loginRequest } from '../api/auth'
 import { useAuthStore } from '../store/auth'
 import router from '../router'
 import type { LoginCredentials } from '../types/auth'
 
 const resolveLoginErrorMessage = (error: unknown): string => {
-  if (axios.isAxiosError(error)) {
-    const apiMessage = error.response?.data?.msg
+  void error
 
-    if (typeof apiMessage === 'string' && apiMessage.trim()) {
-      return apiMessage
-    }
-  }
-
-  return 'Credenciales inválidas o servidor no disponible.'
+  return 'Invalid credentials or server unavailable.'
 }
 
 export const useAuth = () => {

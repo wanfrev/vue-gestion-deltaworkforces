@@ -22,12 +22,12 @@
         <DeltaLogo size="2xl" centered />
       </div>
 
-      <h1 class="mb-2 text-3xl font-bold text-delta-text">Acceso de Empleado</h1>
-      <p class="mb-8 text-sm text-gray-600">Ingresa con tus credenciales para consultar tus recibos de nómina.</p>
+      <h1 class="mb-2 text-3xl font-bold text-delta-text">Employee Login</h1>
+      <p class="mb-8 text-sm text-gray-600">Sign in with your credentials to view your payroll receipts.</p>
 
       <form class="space-y-4" @submit.prevent="submitLogin">
         <div>
-          <label for="username" class="mb-1 block text-sm font-medium text-gray-700">Usuario</label>
+          <label for="username" class="mb-1 block text-sm font-medium text-gray-700">Username</label>
           <div class="relative">
             <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
               <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -47,7 +47,7 @@
         </div>
 
         <div>
-          <label for="password" class="mb-1 block text-sm font-medium text-gray-700">Contraseña</label>
+          <label for="password" class="mb-1 block text-sm font-medium text-gray-700">Password</label>
           <div class="relative">
             <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
               <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -66,7 +66,7 @@
             <button
               type="button"
               class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-delta-blue focus-visible:outline-none focus-visible:text-delta-blue"
-              :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              :aria-label="showPassword ? 'Hide password' : 'Show password'"
               @click="showPassword = !showPassword"
             >
               <svg
@@ -103,10 +103,10 @@
         <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
 
         <DeltaButton type="submit" :loading="loading" :gradient="true" :spinner-only="true" full-width class="py-3 text-base font-semibold tracking-wide">
-          Entrar
+          Sign In
         </DeltaButton>
 
-        <p class="pt-1 text-center text-xs text-gray-500">Tus datos están protegidos y solo muestran información de tu cuenta.</p>
+        <p class="pt-1 text-center text-xs text-gray-500">Your data is protected and only visible to your account.</p>
       </form>
     </div>
   </div>
@@ -130,7 +130,7 @@ const validationError = ref('')
 
 const submitLogin = async () => {
   if (!username.value.trim() || !password.value.trim()) {
-    validationError.value = 'Usuario y contraseña son obligatorios.'
+    validationError.value = 'Username and password are required.'
     return
   }
 

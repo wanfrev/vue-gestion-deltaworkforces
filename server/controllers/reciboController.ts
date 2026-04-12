@@ -46,6 +46,9 @@ const mapPaymentRecordToReciboPayload = (paymentRecordData: Record<string, unkno
 
 export const getMisUltimosRecibos = async (req: Request, res: Response) => {
   try {
+    const requestedLimit = Number(req.query.limit ?? 4)
+    const limit = Number.isInteger(requestedLimit) && requestedLimit > 0 ? Math.min(requestedLimit, 200) : 4
+
     const paymentRecords = await PaymentRecord.findAll({
       include: [
         {
@@ -65,7 +68,7 @@ export const getMisUltimosRecibos = async (req: Request, res: Response) => {
         ['payment_date', 'DESC'],
         ['id', 'DESC'],
       ],
-      limit: 4,
+      limit,
     })
 
     const payload = paymentRecords.map((paymentRecord) => {

@@ -1,4 +1,3 @@
-import axios from 'axios'
 import { ref } from 'vue'
 import { getRecibosAdmin, importarNominaAdmin, type NominaImportItemPayload } from '../api/admin'
 import type { Recibo } from '../types/payroll'
@@ -61,23 +60,9 @@ const inferEmployeeFromFileName = (fileName: string): { name: string; quickbooks
   }
 }
 
-interface ApiErrorPayload {
-  msg?: unknown
-  error?: unknown
-  message?: unknown
-}
-
 const resolveApiErrorMessage = (error: unknown, fallback: string): string => {
-  if (!axios.isAxiosError(error)) {
-    return fallback
-  }
-
-  const payload = error.response?.data as ApiErrorPayload | undefined
-  const apiError = typeof payload?.error === 'string' ? payload.error.trim() : ''
-  const apiMsg = typeof payload?.msg === 'string' ? payload.msg.trim() : ''
-  const apiMessage = typeof payload?.message === 'string' ? payload.message.trim() : ''
-
-  return apiError || apiMsg || apiMessage || fallback
+  void error
+  return fallback
 }
 
 const normalizeHeader = (value: string): string => {
@@ -160,10 +145,10 @@ const buildPeriodo = (record: RawRecord): string => {
   const fin = pick(record, ['periodo_fin', 'fin_periodo'])
 
   if (inicio && fin) {
-    return `Del ${inicio} al ${fin}`
+    return `From ${inicio} to ${fin}`
   }
 
-  return 'Periodo no especificado'
+  return 'Period not specified'
 }
 
 const normalizeRawToImportItem = (record: RawRecord): NominaImportItemPayload => {
@@ -191,7 +176,7 @@ const normalizeRawToImportItem = (record: RawRecord): NominaImportItemPayload =>
       deducciones: parseNumber(pick(record, ['deducciones', 'impuestos'])),
       bonos: parseNumber(pick(record, ['bonos', 'bonus'])),
       periodo_pago: periodo,
-      cargo: pick(record, ['cargo', 'puesto']) || 'No especificado',
+      cargo: pick(record, ['cargo', 'puesto']) || 'Not specified',
     },
     checkNumber: pick(record, ['check_number', 'numero_cheque', 'cheque']),
   }
@@ -255,11 +240,11 @@ const readFileAsDataUrlWithProgress = (file: File, onProgress?: (percent: number
         return
       }
 
-      reject(new Error('No fue posible leer el archivo.'))
+      reject(new Error('Could not read the file.'))
     }
 
     reader.onerror = () => {
-      reject(new Error('No fue posible leer el archivo.'))
+      reject(new Error('Could not read the file.'))
     }
 
     reader.onprogress = (event) => {
@@ -281,6 +266,45 @@ interface ImportNominaResult {
   employeeName: string
 }
 
+interface ImportNominaResponseShape {
+  msg: string
+  resumen: {
+    registrosProcesados: number
+    usuariosNuevos: number
+    recibosCreados: number
+    recibosActualizados: number
+    registrosOmitidos?: number
+  }
+  usuariosAutoCreados?: Array<{
+    nombre: string
+    username: string
+    passwordTemporal: string
+    quickbooksId: string
+  }>
+  errores?: string[]
+}
+
+const buildImportSuccessMessage = (response: ImportNominaResponseShape): string => {
+  const baseMessage = `Payroll import completed. Created: ${response.resumen.recibosCreados}, updated: ${response.resumen.recibosActualizados}, new users: ${response.resumen.usuariosNuevos}.`
+  return baseMessage
+}
+
+const buildAutoCreationNotice = (response: ImportNominaResponseShape): string => {
+  const createdUsers = response.usuariosAutoCreados ?? []
+
+  if (!createdUsers.length) {
+    return ''
+  }
+
+  if (createdUsers.length === 1) {
+    const user = createdUsers[0]
+    return `This employee is not registered and will be created automatically: ${user.nombre}. Username: ${user.username}, temporary password: ${user.passwordTemporal}.`
+  }
+
+  const userList = createdUsers.map((user) => `${user.nombre} (${user.username})`).join(', ')
+  return `${createdUsers.length} unregistered employees will be created automatically: ${userList}.`
+}
+
 export const useAdminPayroll = () => {
   const rawInput = ref('')
   const selectedExcelFile = ref<File | null>(null)
@@ -297,10 +321,12 @@ export const useAdminPayroll = () => {
 
   const errorMessage = ref('')
   const successMessage = ref('')
+  const autoCreationNotice = ref('')
 
   const limpiarMensajes = () => {
     errorMessage.value = ''
     successMessage.value = ''
+    autoCreationNotice.value = ''
   }
 
   const importarNomina = async (): Promise<ImportNominaResult> => {
@@ -326,10 +352,11 @@ export const useAdminPayroll = () => {
           defaultEmployeeQuickbooksId: defaultEmployeeQuickbooksId.value.trim() || undefined,
         }
 
-        const response = await importarNominaAdmin(payload)
+        const response = (await importarNominaAdmin(payload)) as ImportNominaResponseShape
         importProgress.value = 100
 
-        successMessage.value = `${response.msg}. Creados: ${response.resumen.recibosCreados}, actualizados: ${response.resumen.recibosActualizados}, usuarios nuevos: ${response.resumen.usuariosNuevos}.`
+        successMessage.value = buildImportSuccessMessage(response)
+        autoCreationNotice.value = buildAutoCreationNotice(response)
 
         const linkedRecords = Math.max(
           response.resumen.registrosProcesados || 0,
@@ -342,10 +369,10 @@ export const useAdminPayroll = () => {
         return {
           ok: true,
           linkedRecords,
-          employeeName: sourceEmployeeName || 'empleado',
+          employeeName: sourceEmployeeName || 'employee',
         }
       } catch (error) {
-        errorMessage.value = resolveApiErrorMessage(error, 'No fue posible importar el archivo Excel.')
+        errorMessage.value = resolveApiErrorMessage(error, 'Could not import the Excel file.')
         return {
           ok: false,
           linkedRecords: 0,
@@ -360,7 +387,7 @@ export const useAdminPayroll = () => {
     const text = rawInput.value.trim()
 
     if (!text) {
-      errorMessage.value = 'Pega un CSV/TSV o JSON para importar la nómina.'
+      errorMessage.value = 'Paste CSV/TSV or JSON data to import payroll.'
       return {
         ok: false,
         linkedRecords: 0,
@@ -371,7 +398,7 @@ export const useAdminPayroll = () => {
     const parsed = text.startsWith('[') ? parseJsonInput(text) : parseDelimitedInput(text)
 
     if (!parsed.length) {
-      errorMessage.value = 'No fue posible interpretar los datos pegados.'
+      errorMessage.value = 'Could not parse the pasted data.'
       return {
         ok: false,
         linkedRecords: 0,
@@ -379,10 +406,10 @@ export const useAdminPayroll = () => {
       }
     }
 
-    const validItems = parsed.filter((item) => item.quickbooksId && item.nombre && item.fecha)
+    const validItems = parsed.filter((item) => Boolean(item.fecha && (item.quickbooksId || item.nombre)))
 
     if (!validItems.length) {
-      errorMessage.value = 'No hay registros válidos para importar.'
+      errorMessage.value = 'There are no valid records to import.'
       return {
         ok: false,
         linkedRecords: 0,
@@ -398,10 +425,11 @@ export const useAdminPayroll = () => {
         nominaData: validItems,
       }
 
-      const response = await importarNominaAdmin(payload)
+      const response = (await importarNominaAdmin(payload)) as ImportNominaResponseShape
       importProgress.value = 100
 
-      successMessage.value = `${response.msg}. Creados: ${response.resumen.recibosCreados}, actualizados: ${response.resumen.recibosActualizados}, usuarios nuevos: ${response.resumen.usuariosNuevos}.`
+      successMessage.value = buildImportSuccessMessage(response)
+      autoCreationNotice.value = buildAutoCreationNotice(response)
 
       await cargarRecibosAdmin(search.value)
 
@@ -413,10 +441,10 @@ export const useAdminPayroll = () => {
       return {
         ok: true,
         linkedRecords,
-        employeeName: defaultEmployeeName.value.trim() || validItems[0]?.nombre || 'empleado',
+        employeeName: defaultEmployeeName.value.trim() || validItems[0]?.nombre || 'employee',
       }
     } catch (error) {
-      errorMessage.value = resolveApiErrorMessage(error, 'No fue posible importar la nómina.')
+      errorMessage.value = resolveApiErrorMessage(error, 'Could not import payroll.')
       return {
         ok: false,
         linkedRecords: 0,
@@ -428,7 +456,7 @@ export const useAdminPayroll = () => {
     }
   }
 
-  const cargarRecibosAdmin = async (query = '', limit = 4) => {
+  const cargarRecibosAdmin = async (query = '', limit = 200) => {
     loadingSearch.value = true
 
     try {
@@ -439,7 +467,7 @@ export const useAdminPayroll = () => {
         reciboSeleccionado.value = data[0]
       }
     } catch {
-      errorMessage.value = 'No fue posible consultar recibos existentes.'
+      errorMessage.value = 'Could not fetch existing receipts.'
       recibosExistentes.value = []
     } finally {
       loadingSearch.value = false
@@ -488,6 +516,7 @@ export const useAdminPayroll = () => {
     loadingSearch,
     errorMessage,
     successMessage,
+    autoCreationNotice,
     importarNomina,
     cargarRecibosAdmin,
     seleccionarRecibo,

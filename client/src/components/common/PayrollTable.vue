@@ -27,10 +27,10 @@
   <template v-else>
     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-black/5">
       <div class="hidden grid-cols-[1.6fr_1fr_0.9fr_auto] gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 md:grid">
-        <p>Periodo</p>
-        <p class="text-center">Monto neto</p>
-        <p>Estado</p>
-        <p class="text-right">Acciones</p>
+        <p>Period</p>
+        <p class="text-center">Net Amount</p>
+        <p>Status</p>
+        <p class="text-right">Actions</p>
       </div>
 
       <div v-for="recibo in recibos" :key="recibo.id" class="border-b border-slate-100 last:border-b-0">
@@ -51,7 +51,7 @@
             </span>
             <div>
               <p class="text-sm font-semibold leading-relaxed text-slate-700">{{ recibo.periodo }}</p>
-              <p class="mt-0.5 text-xs leading-relaxed text-gray-500">Pago: {{ formatPayDate(recibo.fecha_pago) }}</p>
+              <p class="mt-0.5 text-xs leading-relaxed text-gray-500">Paid: {{ formatPayDate(recibo.fecha_pago) }}</p>
             </div>
           </div>
 
@@ -69,7 +69,7 @@
               type="button"
               class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-delta-blue/40 hover:text-delta-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-delta-blue/30 disabled:cursor-not-allowed disabled:opacity-50"
               :disabled="isDownloading(recibo.id)"
-              :aria-label="`Descargar recibo ${recibo.id}`"
+              :aria-label="`Download receipt ${recibo.id}`"
               @click.stop="$emit('download-pdf', recibo)"
             >
               <svg
@@ -102,8 +102,8 @@
       <div v-if="!recibos.length" class="px-5 py-10">
         <div class="mx-auto max-w-md rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
           <Wallet class="mx-auto h-7 w-7 text-slate-400" :size="28" :stroke-width="1.8" />
-          <p class="mt-3 text-sm font-semibold text-slate-700">Tu primer pago aparecera aqui pronto.</p>
-          <p class="mt-1 text-sm text-slate-500">Bienvenido a Delta, estamos preparando tu historial de nomina.</p>
+          <p class="mt-3 text-sm font-semibold text-slate-700">Your first payment will appear here soon.</p>
+          <p class="mt-1 text-sm text-slate-500">Welcome to Delta, we are preparing your payroll history.</p>
         </div>
       </div>
     </section>
@@ -151,13 +151,13 @@ const formatPayDate = (dateIso: string) => {
 
 const isPaidStatus = (estado?: string) => {
   const status = (estado || '').trim().toLowerCase()
-  return !status || status === 'pagado' || status.includes('pag')
+  return !status || status === 'paid' || status === 'pagado' || status.includes('pag')
 }
 
 const getStatusClass = (estado?: string) => {
   const status = (estado || '').trim().toLowerCase()
 
-  if (status === 'en proceso' || status === 'en procesamiento' || status.includes('proceso')) {
+  if (status === 'in process' || status === 'processing' || status === 'en proceso' || status === 'en procesamiento' || status.includes('proceso')) {
     return 'bg-amber-100 text-amber-700'
   }
 
@@ -172,13 +172,13 @@ const getStatusLabel = (estado?: string) => {
   const status = (estado || '').trim().toLowerCase()
 
   if (status === 'en procesamiento' || status.includes('proceso')) {
-    return 'En proceso'
+    return 'In process'
   }
 
   if (status === 'revisar' || status === 'error' || status.includes('error')) {
-    return 'Requiere revisión'
+    return 'Needs review'
   }
 
-  return 'Pagado'
+  return 'Paid'
 }
 </script>

@@ -1,8 +1,12 @@
 import http from './http'
 import type { Recibo } from '../types/payroll'
 
-export const getMisRecibos = async () => {
-  const { data } = await http.get<Recibo[]>('/mis-recibos')
+export const getMisRecibos = async (limit = 4) => {
+  const { data } = await http.get<Recibo[]>('/mis-recibos', {
+    params: {
+      limit,
+    },
+  })
   return data
 }
 

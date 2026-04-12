@@ -18,7 +18,15 @@ interface ImportNominaResponse {
     usuariosNuevos: number
     recibosCreados: number
     recibosActualizados: number
+    registrosOmitidos?: number
   }
+  usuariosAutoCreados?: Array<{
+    nombre: string
+    username: string
+    passwordTemporal: string
+    quickbooksId: string
+  }>
+  errores?: string[]
 }
 
 export interface CreateEmployeeByAdminPayload {
@@ -61,7 +69,7 @@ export const importarNominaAdmin = async (payload: {
   return data
 }
 
-export const getRecibosAdmin = async (search = '', limit = 4) => {
+export const getRecibosAdmin = async (search = '', limit = 200) => {
   const { data } = await http.get<Recibo[]>('/admin/recibos', {
     params: {
       search: search.trim() || undefined,

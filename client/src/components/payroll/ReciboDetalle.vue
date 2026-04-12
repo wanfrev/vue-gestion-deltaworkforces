@@ -20,37 +20,37 @@
               <p class="text-base font-semibold text-slate-900">Delta Workforces Payroll</p>
             </div>
             <div class="flex flex-wrap gap-2">
-              <DeltaButton class="px-4 py-2 text-sm" variant="secondary" @click="$emit('back')">Volver</DeltaButton>
+              <DeltaButton class="px-4 py-2 text-sm" variant="secondary" @click="$emit('back')">Back</DeltaButton>
               <DeltaButton class="px-4 py-2 text-sm" @click="$emit('print')">
                 <span class="inline-flex items-center gap-1">
                   <span aria-hidden="true">⬇</span>
-                  <span>Descargar PDF</span>
+                  <span>Download PDF</span>
                 </span>
               </DeltaButton>
             </div>
             <div class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm text-gray-600 sm:text-right">
-              <p class="font-semibold text-delta-text">Comprobante de Nómina</p>
-              <p><span class="font-semibold">Folio:</span> #{{ recibo.id }}</p>
-              <p><span class="font-semibold">Fecha de pago:</span> {{ recibo.fecha_pago }}</p>
+              <p class="font-semibold text-delta-text">Payroll Receipt</p>
+              <p><span class="font-semibold">Receipt:</span> #{{ recibo.id }}</p>
+              <p><span class="font-semibold">Payment date:</span> {{ recibo.fecha_pago }}</p>
             </div>
           </div>
         </div>
 
         <div class="mt-5 grid gap-3 text-sm sm:grid-cols-2">
           <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p class="font-semibold text-delta-text">Datos de la empresa</p>
-            <p class="mt-1 text-gray-600"><span class="font-medium">Empresa:</span> {{ companyName }}</p>
-            <p class="text-gray-600"><span class="font-medium">Sistema:</span> Delta Workforces Payroll</p>
-            <p class="text-gray-600"><span class="font-medium">Periodo:</span> {{ periodoPago }}</p>
+            <p class="font-semibold text-delta-text">Company details</p>
+            <p class="mt-1 text-gray-600"><span class="font-medium">Company:</span> {{ companyName }}</p>
+            <p class="text-gray-600"><span class="font-medium">System:</span> Delta Workforces Payroll</p>
+            <p class="text-gray-600"><span class="font-medium">Period:</span> {{ periodoPago }}</p>
           </div>
 
           <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p class="font-semibold text-delta-text">Datos del empleado</p>
-            <p class="mt-1 text-gray-600"><span class="font-medium">Nombre:</span> {{ nombreEmpleado }}</p>
+            <p class="font-semibold text-delta-text">Employee details</p>
+            <p class="mt-1 text-gray-600"><span class="font-medium">Name:</span> {{ nombreEmpleado }}</p>
             <p class="text-gray-600"><span class="font-medium">ID:</span> {{ idEmpleado }}</p>
-            <p class="text-gray-600"><span class="font-medium">Cargo:</span> {{ cargoEmpleado }}</p>
+            <p class="text-gray-600"><span class="font-medium">Position:</span> {{ cargoEmpleado }}</p>
             <p class="text-gray-600">
-              <span class="font-medium">Estatus:</span>
+              <span class="font-medium">Status:</span>
               <span class="ml-1 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold" :class="statusClass">
                 {{ statusLabel }}
               </span>
@@ -61,15 +61,15 @@
 
       <section class="grid gap-4 p-6 sm:grid-cols-2 sm:p-8">
         <div class="rounded-xl border border-slate-100 bg-white p-4">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-delta-blue">Ingresos</h3>
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-delta-blue">Earnings</h3>
         <div v-if="earningsRows.length" class="space-y-2 text-sm text-gray-700">
           <div
             class="grid border-b border-slate-100 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-500"
             :class="showYtd ? 'grid-cols-[2.2fr_0.9fr_1fr_1fr_1fr]' : 'grid-cols-[2.6fr_1fr_1fr_1fr]'"
           >
-            <span>Descripción</span>
-            <span class="text-right">Cant.</span>
-            <span class="text-right">Tarifa</span>
+            <span>Description</span>
+            <span class="text-right">Qty.</span>
+            <span class="text-right">Rate</span>
             <span class="text-right">Total</span>
             <span v-if="showYtd" class="text-right">YTD</span>
           </div>
@@ -84,19 +84,19 @@
             <span class="text-right">${{ formatCurrency(earning.rate) }}</span>
             <span class="text-right">${{ formatCurrency(earning.total) }}</span>
             <span v-if="showYtd" class="text-right font-medium text-slate-600">
-              {{ earning.ytd === null ? 'N/D' : `$${formatCurrency(earning.ytd)}` }}
+              {{ earning.ytd === null ? 'N/A' : `$${formatCurrency(earning.ytd)}` }}
             </span>
           </div>
           <div class="flex justify-between">
-            <span>Ingreso base</span>
+            <span>Base earnings</span>
             <span>${{ formatCurrency(ingresoBase) }}</span>
           </div>
           <div v-if="bonos > 0" class="flex justify-between font-semibold text-green-700">
-            <span>Bonos</span>
+            <span>Bonuses</span>
             <span>+ ${{ formatCurrency(bonos) }}</span>
           </div>
         </div>
-        <p v-else class="text-sm text-gray-500">No hay conceptos de ingresos disponibles.</p>
+        <p v-else class="text-sm text-gray-500">No earnings items available.</p>
         </div>
 
         <div class="rounded-xl border border-slate-100 bg-white p-4">
@@ -121,20 +121,20 @@
       <section class="mx-6 mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm sm:mx-8 sm:mb-8 sm:p-7">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p class="text-sm text-slate-500">Resumen del depósito</p>
+            <p class="text-sm text-slate-500">Deposit summary</p>
             <p class="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">${{ formatCurrency(totalPagado) }}</p>
-            <p class="mt-1 text-xs uppercase tracking-wide text-slate-500">Total neto depositado</p>
+            <p class="mt-1 text-xs uppercase tracking-wide text-slate-500">Total net deposited</p>
           </div>
 
           <div class="space-y-1 text-sm text-slate-600">
           <p>
-            Ingresos: <span class="font-semibold text-slate-800">${{ formatCurrency(totalIngresos) }}</span>
+            Earnings: <span class="font-semibold text-slate-800">${{ formatCurrency(totalIngresos) }}</span>
           </p>
           <p>
-            Deducciones: <span class="font-semibold text-slate-800">${{ formatCurrency(deducciones) }}</span>
+            Deductions: <span class="font-semibold text-slate-800">${{ formatCurrency(deducciones) }}</span>
           </p>
           <p v-if="ytdTotal !== null">
-            Acumulado anual (YTD): <span class="font-semibold text-slate-800">${{ formatCurrency(ytdTotal) }}</span>
+            Year to date (YTD): <span class="font-semibold text-slate-800">${{ formatCurrency(ytdTotal) }}</span>
           </p>
           </div>
         </div>
@@ -142,14 +142,14 @@
 
       <section class="mx-6 mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500 sm:mx-8">
         <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <p><span class="font-semibold text-slate-700">Fecha de pago:</span> {{ recibo.fecha_pago }}</p>
-          <p v-if="checkNumber"><span class="font-semibold text-slate-700">Cheque:</span> {{ checkNumber }}</p>
-          <p v-else><span class="font-semibold text-slate-700">Cheque:</span> No especificado</p>
+          <p><span class="font-semibold text-slate-700">Payment date:</span> {{ recibo.fecha_pago }}</p>
+          <p v-if="checkNumber"><span class="font-semibold text-slate-700">Check:</span> {{ checkNumber }}</p>
+          <p v-else><span class="font-semibold text-slate-700">Check:</span> Not specified</p>
         </div>
       </section>
 
       <p class="px-6 pb-1 text-center text-xs text-slate-400 sm:px-8">
-        Documento generado electrónicamente por Delta Workforces Payroll System.
+        Document generated electronically by Delta Workforces Payroll System.
       </p>
 
     </div>
@@ -175,10 +175,10 @@ defineEmits<{
 
 const authStore = useAuthStore()
 
-const nombreEmpleado = computed(() => props.recibo.User?.nombre || props.recibo.empleadoNombre || authStore.user?.nombre || 'Empleado Delta')
-const idEmpleado = computed(() => props.recibo.User?.id?.toString() || authStore.user?.id?.toString() || 'N/D')
-const cargoEmpleado = computed(() => String(props.recibo.detalles?.cargo || 'No especificado'))
-const companyName = computed(() => String(props.recibo.detalles?.company || props.recibo.detalles?.company_name || 'No especificada'))
+const nombreEmpleado = computed(() => props.recibo.User?.nombre || props.recibo.empleadoNombre || authStore.user?.nombre || 'Delta Employee')
+const idEmpleado = computed(() => props.recibo.User?.id?.toString() || authStore.user?.id?.toString() || 'N/A')
+const cargoEmpleado = computed(() => String(props.recibo.detalles?.cargo || 'Not specified'))
+const companyName = computed(() => String(props.recibo.detalles?.company || props.recibo.detalles?.company_name || 'Not specified'))
 
 interface EarningRow {
   description: string
@@ -202,7 +202,7 @@ const earningsRows = computed<EarningRow[]>(() => {
       )
 
       return {
-        description: String(row.description || 'Concepto'),
+        description: String(row.description || 'Item'),
         quantity,
         rate,
         total,
@@ -235,7 +235,7 @@ const horasRegulares = computed(() => Number(props.recibo.detalles?.horas_regula
 const pagoHora = computed(() => Number(props.recibo.detalles?.pago_hora || 0))
 const bonos = computed(() => Number(props.recibo.detalles?.bonos || 0))
 const deducciones = computed(() => Number(props.recibo.detalles?.deducciones || 0))
-const periodoPago = computed(() => String(props.recibo.detalles?.period || props.recibo.detalles?.periodo_pago || props.recibo.periodo || 'No especificado'))
+const periodoPago = computed(() => String(props.recibo.detalles?.period || props.recibo.detalles?.periodo_pago || props.recibo.periodo || 'Not specified'))
 const checkNumber = computed(() => String(props.recibo.detalles?.check_number || props.recibo.detalles?.numero_cheque || props.recibo.detalles?.cheque || props.recibo.detalles?.checkNumber || '').trim())
 
 const totalPagado = computed(() => Number(props.recibo.detalles?.total_paid || props.recibo.monto || 0))
@@ -283,14 +283,14 @@ const statusLabel = computed(() => {
   const status = (props.recibo.estado || '').trim().toLowerCase()
 
   if (status === 'en procesamiento' || status.includes('proceso')) {
-    return 'En proceso'
+    return 'In process'
   }
 
   if (status === 'revisar' || status === 'error' || status.includes('error')) {
-    return 'Requiere revisión'
+    return 'Needs review'
   }
 
-  return 'Pagado'
+  return 'Paid'
 })
 
 const formatCurrency = (value: number) => Number(value).toFixed(2)
