@@ -44,7 +44,7 @@
     <h3 class="text-base font-semibold text-delta-text">Employee Directory</h3>
     <p class="mt-1 text-sm text-gray-600">Search employees by name, QuickBooks ID, or username.</p>
 
-    <div class="mt-4 flex w-full gap-2">
+    <div class="mt-4 flex w-full flex-col gap-2 sm:flex-row">
       <input
         :value="search"
         type="search"
@@ -53,7 +53,7 @@
         @input="emit('update:search', ($event.target as HTMLInputElement).value)"
         @keyup.enter="emit('search')"
       />
-      <DeltaButton :loading="loadingSearch" variant="secondary" @click="emit('search')">Search</DeltaButton>
+      <DeltaButton class="sm:shrink-0" :loading="loadingSearch" variant="secondary" @click="emit('search')">Search</DeltaButton>
     </div>
 
     <div class="mt-4 rounded-xl border border-slate-200 bg-white">
@@ -94,7 +94,7 @@
 
             <div
               v-if="menuEmpleadoAbiertoId === empleado.employeeId"
-              class="absolute right-0 top-full z-20 mt-2 min-w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-lg"
+              class="absolute left-0 top-full z-20 mt-2 min-w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-lg md:left-auto md:right-0"
               @click.stop
             >
               <button

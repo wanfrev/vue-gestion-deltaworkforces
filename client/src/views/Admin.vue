@@ -4,13 +4,26 @@
       <AdminSidebar
         :seccion-activa="seccionActiva"
         :recibos-count="recibosExistentes.length"
+        :is-mobile-open="mobileSidebarOpen"
+        :user-name="authStore.user?.nombre || 'Admin User'"
+        :user-role="authStore.user?.rol || 'admin'"
         @change-section="cambiarSeccion"
+        @close-mobile="cerrarMenuMovil"
         @logout="logout"
       />
 
       <main class="flex-1 bg-slate-50 p-4 sm:p-6 md:p-8">
         <div class="mx-auto max-w-7xl">
-          <AdminHeader />
+          <div class="mb-4 md:hidden">
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300"
+              @click="mobileSidebarOpen = true"
+            >
+              <Menu :size="17" :stroke-width="2" />
+              <span>Menu</span>
+            </button>
+          </div>
 
           <AdminAlerts
             :error-message="errorMessage"
@@ -134,11 +147,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { Menu } from 'lucide-vue-next'
 import AdminAlerts from '../components/admin/AdminAlerts.vue'
 import AdminConfirmCard from '../components/admin/AdminConfirmCard.vue'
 import AdminCreateUserSection from '../components/admin/AdminCreateUserSection.vue'
 import AdminEmployeesOverviewSection from '../components/admin/AdminEmployeesOverviewSection.vue'
-import AdminHeader from '../components/admin/AdminHeader.vue'
 import AdminPasswordCard from '../components/admin/AdminPasswordCard.vue'
 import AdminPaymentsHistorySection from '../components/admin/AdminPaymentsHistorySection.vue'
 import AdminPayrollImportSection from '../components/admin/AdminPayrollImportSection.vue'
@@ -149,7 +162,7 @@ import { useAdminUserManagement } from '../composables/useAdminUserManagement'
 import { useAuth } from '../composables/useAuth'
 import { type AdminSection, useAdminViewState } from '../composables/useAdminViewState'
 
-const { logout } = useAuth()
+const { logout, authStore } = useAuth()
 
 const {
   rawInput,
@@ -234,6 +247,11 @@ const confirmDeleteRecordsVisible = ref(false)
 const confirmDeleteEmployeeVisible = ref(false)
 const changePasswordVisible = ref(false)
 const modalActionLoading = ref(false)
+const mobileSidebarOpen = ref(false)
+
+const cerrarMenuMovil = () => {
+  mobileSidebarOpen.value = false
+}
 
 const confirmDeleteRecordsText = computed(() => {
   if (!selectedEmployeeAction.value) {
@@ -411,6 +429,7 @@ const confirmarCambioPassword = async (password: string) => {
 const cambiarSeccion = (seccion: AdminSection) => {
   limpiarMensajes()
   toast.value.visible = false
+  cerrarMenuMovil()
 
   if (toastTimer) {
     clearTimeout(toastTimer)

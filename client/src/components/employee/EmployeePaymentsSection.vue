@@ -4,7 +4,7 @@
       <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Year-to-Date ({{ ytdYear }})</p>
         <div class="mt-2 flex items-baseline gap-2">
-          <p class="font-mono text-3xl font-bold text-slate-900">{{ ytdMontoLabel }}</p>
+          <p class="font-mono text-2xl font-bold text-slate-900 sm:text-3xl">{{ ytdMontoLabel }}</p>
           <span class="text-sm font-semibold text-emerald-600">USD</span>
         </div>
         <p class="mt-1 text-sm text-slate-500">Yearly net pay total</p>
@@ -13,7 +13,7 @@
       <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Latest Payment</p>
         <div class="mt-2 flex items-baseline gap-2">
-          <p class="font-mono text-3xl font-bold text-slate-900">{{ ultimoPagoMontoLabel }}</p>
+          <p class="font-mono text-2xl font-bold text-slate-900 sm:text-3xl">{{ ultimoPagoMontoLabel }}</p>
           <span class="text-sm font-semibold text-emerald-600">USD</span>
         </div>
         <p class="mt-1 text-sm text-slate-500">Paid on {{ ultimoPagoFechaLabel }}</p>
@@ -21,7 +21,7 @@
 
       <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Hours (Month)</p>
-        <p class="mt-2 text-3xl font-bold text-slate-900">{{ horasMesLabel }} <span class="text-xl font-semibold text-slate-500">hrs</span></p>
+        <p class="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">{{ horasMesLabel }} <span class="text-lg font-semibold text-slate-500 sm:text-xl">hrs</span></p>
         <p class="mt-1 text-sm text-slate-500">{{ etiquetaMes }}</p>
       </article>
     </section>
@@ -34,7 +34,7 @@
     />
 
     <template v-else>
-      <div class="mb-4 flex items-center justify-end gap-2">
+      <div class="mb-4 flex flex-wrap items-center justify-start gap-2 sm:justify-end">
         <label for="limite-recibos" class="text-sm text-slate-600">Show</label>
         <select
           id="limite-recibos"

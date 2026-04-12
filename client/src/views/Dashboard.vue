@@ -6,13 +6,26 @@
         :ultimo-pago-fecha-label="ultimoPagoFechaLabel"
         :horas-mes-label="horasMesLabel"
         :ytd-label="ytdMontoLabel"
+        :is-mobile-open="mobileSidebarOpen"
+        :user-name="authStore.user?.nombre || 'Employee User'"
+        :user-role="authStore.user?.rol || 'empleado'"
         @change-section="cambiarSeccionEmpleado"
+        @close-mobile="cerrarMenuMovil"
         @logout="logout"
       />
 
       <main class="flex-1 bg-slate-50 p-4 sm:p-6 md:p-8">
         <div class="mx-auto max-w-7xl">
-          <EmployeeHeader :nombre-corto="nombreCorto" />
+          <div class="mb-4 md:hidden">
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300"
+              @click="mobileSidebarOpen = true"
+            >
+              <Menu :size="17" :stroke-width="2" />
+              <span>Menu</span>
+            </button>
+          </div>
 
           <EmployeeErrorAlert :error-message="errorMessage" />
 
@@ -50,9 +63,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { Menu } from 'lucide-vue-next'
 import EmployeeErrorAlert from '../components/employee/EmployeeErrorAlert.vue'
-import EmployeeHeader from '../components/employee/EmployeeHeader.vue'
 import EmployeePaymentsSection from '../components/employee/EmployeePaymentsSection.vue'
 import EmployeeProfileSection from '../components/employee/EmployeeProfileSection.vue'
 import EmployeeSidebar from '../components/employee/EmployeeSidebar.vue'
@@ -74,20 +87,24 @@ const {
 } = usePayroll()
 
 const authNombre = computed(() => authStore.user?.nombre)
+const mobileSidebarOpen = ref(false)
+
+const cerrarMenuMovil = () => {
+  mobileSidebarOpen.value = false
+}
 
 const {
   downloadingReciboId,
   seccionActiva,
   limiteRecibos,
   opcionesLimiteRecibos,
-  nombreCorto,
   ultimoPagoFechaLabel,
   ultimoPagoMontoLabel,
   horasMesLabel,
   etiquetaMes,
   ytdYear,
   ytdMontoLabel,
-  cambiarSeccionEmpleado,
+  cambiarSeccionEmpleado: cambiarSeccionEmpleadoBase,
   cargarInicialRecibos,
   cambiarLimiteRecibos,
   imprimirReciboEnPantalla,
@@ -101,6 +118,11 @@ const {
   limpiarReciboSeleccionado,
   descargarPdf,
 })
+
+const cambiarSeccionEmpleado = (section: 'mis-pagos' | 'mi-perfil') => {
+  cerrarMenuMovil()
+  cambiarSeccionEmpleadoBase(section)
+}
 
 onMounted(async () => {
   await cargarInicialRecibos()

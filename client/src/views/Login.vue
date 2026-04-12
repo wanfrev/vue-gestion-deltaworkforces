@@ -21,9 +21,7 @@
       <div class="mb-8 flex justify-center px-4 pt-4 pb-3">
         <DeltaLogo size="2xl" centered />
       </div>
-
-      <h1 class="mb-2 text-3xl font-bold text-delta-text">Employee Login</h1>
-      <p class="mb-8 text-sm text-gray-600">Sign in with your credentials to view your payroll receipts.</p>
+      <h2 class="mb-6 text-center text-2xl font-bold tracking-tight text-gray-800">Sign in to your account</h2>
 
       <form class="space-y-4" @submit.prevent="submitLogin">
         <div>
@@ -105,8 +103,6 @@
         <DeltaButton type="submit" :loading="loading" :gradient="true" :spinner-only="true" full-width class="py-3 text-base font-semibold tracking-wide">
           Sign In
         </DeltaButton>
-
-        <p class="pt-1 text-center text-xs text-gray-500">Your data is protected and only visible to your account.</p>
       </form>
     </div>
   </div>

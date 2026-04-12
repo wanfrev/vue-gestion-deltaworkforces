@@ -59,10 +59,12 @@
         </div>
       </header>
 
-      <section class="grid gap-4 p-6 sm:grid-cols-2 sm:p-8">
+      <section class="grid gap-4 p-4 sm:grid-cols-2 sm:p-8">
         <div class="rounded-xl border border-slate-100 bg-white p-4">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-delta-blue">Earnings</h3>
         <div v-if="earningsRows.length" class="space-y-2 text-sm text-gray-700">
+          <div class="overflow-x-auto pb-1">
+            <div class="min-w-[520px] space-y-2">
           <div
             class="grid border-b border-slate-100 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-500"
             :class="showYtd ? 'grid-cols-[2.2fr_0.9fr_1fr_1fr_1fr]' : 'grid-cols-[2.6fr_1fr_1fr_1fr]'"
@@ -86,6 +88,8 @@
             <span v-if="showYtd" class="text-right font-medium text-slate-600">
               {{ earning.ytd === null ? 'N/A' : `$${formatCurrency(earning.ytd)}` }}
             </span>
+          </div>
+            </div>
           </div>
           <div class="flex justify-between">
             <span>Base earnings</span>
