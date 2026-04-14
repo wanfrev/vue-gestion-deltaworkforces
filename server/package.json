@@ -4,7 +4,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node index.js",
+    "start": "npx tsx index.ts",
     "dev": "nodemon --watch . --ext ts --exec tsx index.ts",
     "typecheck": "tsc --noEmit",
     "admin:create": "tsx scripts/createAdmin.ts",
