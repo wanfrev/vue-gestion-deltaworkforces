@@ -30,7 +30,7 @@
       v-if="reciboSeleccionado"
       :recibo="reciboSeleccionado"
       @back="emit('clear-selected')"
-      @print="emit('print-selected')"
+      @print="emit('download-pdf', reciboSeleccionado)"
     />
 
     <template v-else>
@@ -91,7 +91,6 @@ const emit = defineEmits<{
   (event: 'update:limiteRecibos', value: ReceiptLimitOption): void
   (event: 'change-limit'): void
   (event: 'clear-selected'): void
-  (event: 'print-selected'): void
   (event: 'view-details', recibo: Recibo): void
   (event: 'download-pdf', recibo: Recibo): void
 }>()

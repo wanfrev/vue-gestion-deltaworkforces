@@ -45,7 +45,6 @@
             :opciones-limite-recibos="opcionesLimiteRecibos"
             @change-limit="cambiarLimiteRecibos"
             @clear-selected="limpiarReciboSeleccionado"
-            @print-selected="imprimirReciboEnPantalla"
             @view-details="abrirDetalle"
             @download-pdf="descargarRecibo"
           />
@@ -99,7 +98,6 @@ const {
   cambiarSeccionEmpleado: cambiarSeccionEmpleadoBase,
   cargarInicialRecibos,
   cambiarLimiteRecibos,
-  imprimirReciboEnPantalla,
   descargarRecibo,
   abrirDetalle,
 } = useEmployeeDashboardState({

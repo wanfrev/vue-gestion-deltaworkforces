@@ -60,8 +60,20 @@ export interface PrivilegedUser {
   canDelete: boolean
 }
 
+export interface AdminEmployeeDirectoryItem {
+  employeeId: number
+  nombre: string
+  quickbooksId: string
+  username: string
+  registros: number
+}
+
 interface PrivilegedUsersResponse {
   data: PrivilegedUser[]
+}
+
+interface EmployeesDirectoryResponse {
+  data: AdminEmployeeDirectoryItem[]
 }
 
 interface DeletePrivilegedUserResponse {
@@ -116,13 +128,25 @@ export const getRecibosAdmin = async (search = '', limit = 200) => {
   return data
 }
 
+export const getEmployeesAdmin = async (search = '') => {
+  const { data } = await http.get<EmployeesDirectoryResponse>('/admin/empleados', {
+    params: {
+      search: search.trim() || undefined,
+    },
+  })
+
+  return data.data
+}
+
 export const createEmployeeAdmin = async (payload: CreateEmployeeByAdminPayload) => {
   const { data } = await http.post<CreateEmployeeByAdminResponse>('/admin/empleados', payload)
   return data
 }
 
 export const deleteEmployeePaymentRecordsAdmin = async (employeeId: number) => {
-  const { data } = await http.delete<DeleteEmployeeRecordsResponse>(`/admin/empleados/${employeeId}/recibos`)
+  const { data } = await http.delete<DeleteEmployeeRecordsResponse>(`/admin/empleados/${employeeId}/recibos`, {
+    timeout: 30000,
+  })
   return data
 }
 
@@ -135,7 +159,9 @@ export const updateEmployeePasswordAdmin = async (employeeId: number, password: 
 }
 
 export const deleteEmployeeAdmin = async (employeeId: number) => {
-  const { data } = await http.delete<DeleteEmployeeAdminResponse>(`/admin/empleados/${employeeId}`)
+  const { data } = await http.delete<DeleteEmployeeAdminResponse>(`/admin/empleados/${employeeId}`, {
+    timeout: 30000,
+  })
   return data
 }
 

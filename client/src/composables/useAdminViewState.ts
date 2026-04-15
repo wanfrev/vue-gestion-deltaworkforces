@@ -1,4 +1,5 @@
 import { computed, ref, type Ref } from 'vue'
+import type { AdminEmployeeDirectoryItem } from '../api/admin'
 import type { Recibo } from '../types/payroll'
 
 export type AdminSection =
@@ -11,6 +12,7 @@ interface UseAdminViewStateOptions {
   search: Ref<string>
   recibosExistentes: Ref<Recibo[]>
   reciboSeleccionado: Ref<Recibo | null>
+  empleadosDirectorio: Ref<AdminEmployeeDirectoryItem[]>
   cargarRecibosAdmin: (query?: string, limit?: number) => Promise<void>
   seleccionarRecibo: (recibo: Recibo | null) => void
 }
@@ -92,6 +94,7 @@ export const useAdminViewState = ({
   search,
   recibosExistentes,
   reciboSeleccionado,
+  empleadosDirectorio,
   cargarRecibosAdmin,
   seleccionarRecibo,
 }: UseAdminViewStateOptions) => {
@@ -102,17 +105,7 @@ export const useAdminViewState = ({
   const menuEmpleadoAbiertoId = ref<number | null>(null)
 
   const empleadosConRegistros = computed(() => {
-    const grouped = new Map<
-      number,
-      {
-        employeeId: number
-        nombre: string
-        quickbooksId: string
-        username: string
-        registros: number
-        montoTotal: number
-      }
-    >()
+    const montosPorEmpleado = new Map<number, number>()
 
     for (const recibo of recibosExistentes.value) {
       const employeeId = Number(recibo.employeeId || 0)
@@ -121,25 +114,21 @@ export const useAdminViewState = ({
         continue
       }
 
-      const current = grouped.get(employeeId)
-
-      if (!current) {
-        grouped.set(employeeId, {
-          employeeId,
-          nombre: String(recibo.User?.nombre || recibo.empleadoNombre || 'Empleado').trim(),
-          quickbooksId: String(recibo.quickbooksId || recibo.detalles?.quickbooks_id || '').trim(),
-          username: String(recibo.User?.email || recibo.empleadoEmail || '').trim(),
-          registros: 1,
-          montoTotal: Number(recibo.monto || 0),
-        })
-        continue
-      }
-
-      current.registros += 1
-      current.montoTotal += Number(recibo.monto || 0)
+      const currentAmount = montosPorEmpleado.get(employeeId) ?? 0
+      montosPorEmpleado.set(employeeId, currentAmount + Number(recibo.monto || 0))
     }
 
-    return Array.from(grouped.values()).sort((a, b) => a.nombre.localeCompare(b.nombre))
+    return empleadosDirectorio.value
+      .map((empleado) => ({
+        employeeId: Number(empleado.employeeId || 0),
+        nombre: String(empleado.nombre || 'Empleado').trim() || 'Empleado',
+        quickbooksId: String(empleado.quickbooksId || '').trim(),
+        username: String(empleado.username || '').trim(),
+        registros: Number(empleado.registros || 0),
+        montoTotal: montosPorEmpleado.get(Number(empleado.employeeId || 0)) ?? 0,
+      }))
+      .filter((empleado) => empleado.employeeId > 0)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
   })
 
   const empleadosFiltrados = computed(() => {

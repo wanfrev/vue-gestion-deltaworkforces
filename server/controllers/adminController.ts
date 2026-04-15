@@ -1443,6 +1443,86 @@ export const getRecibosAdmin = async (req: Request, res: Response) => {
   }
 }
 
+export const getEmployeesAdmin = async (req: Request, res: Response) => {
+  try {
+    const search = String(req.query.search ?? '').trim()
+    const normalizedSearch = normalizeText(search)
+
+    const employees = await Employee.findAll({
+      include: [
+        {
+          model: User,
+          required: true,
+          attributes: ['id', 'username', 'role'],
+          where: { role: ROLES.EMPLEADO },
+        },
+      ],
+      attributes: ['id', 'quickbooks_id', 'first_name', 'last_name'],
+      order: [
+        ['first_name', 'ASC'],
+        ['last_name', 'ASC'],
+        ['id', 'ASC'],
+      ],
+    })
+
+    const employeeIds = employees.map((employee) => Number(employee.getDataValue('id'))).filter((id) => id > 0)
+
+    const countRows = employeeIds.length
+      ? await PaymentRecord.findAll({
+          where: {
+            employee_id: {
+              [Op.in]: employeeIds,
+            },
+          },
+          attributes: ['employee_id', [fn('COUNT', col('id')), 'recordsCount']],
+          group: ['employee_id'],
+          raw: true,
+        })
+      : []
+
+    const recordsByEmployeeId = new Map<number, number>()
+
+    for (const row of countRows as unknown as Array<{ employee_id: number | string; recordsCount: number | string }>) {
+      const employeeId = Number(row.employee_id)
+      const recordsCount = Number(row.recordsCount)
+
+      if (employeeId > 0) {
+        recordsByEmployeeId.set(employeeId, Number.isFinite(recordsCount) ? recordsCount : 0)
+      }
+    }
+
+    const payload = employees
+      .map((employee) => {
+        const data = employee.toJSON() as Record<string, unknown>
+        const userData = data.User as Record<string, unknown> | undefined
+        const employeeId = Number(data.id || 0)
+        const firstName = String(data.first_name ?? '').trim()
+        const lastName = String(data.last_name ?? '').trim()
+        const nombre = `${firstName} ${lastName}`.trim() || String(userData?.username ?? 'Empleado')
+
+        return {
+          employeeId,
+          nombre,
+          quickbooksId: String(data.quickbooks_id ?? '').trim(),
+          username: String(userData?.username ?? '').trim(),
+          registros: recordsByEmployeeId.get(employeeId) ?? 0,
+        }
+      })
+      .filter((item) => {
+        if (!normalizedSearch) {
+          return true
+        }
+
+        const searchable = normalizeText([item.nombre, item.quickbooksId, item.username].filter(Boolean).join(' '))
+        return searchable.includes(normalizedSearch)
+      })
+
+    return res.json({ data: payload })
+  } catch {
+    return res.status(500).json({ msg: 'Error al consultar empleados.' })
+  }
+}
+
 export const deleteEmployeePaymentRecords = async (req: Request, res: Response) => {
   try {
     const employeeId = Number(req.params.employeeId)

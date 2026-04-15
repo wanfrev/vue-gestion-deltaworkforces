@@ -1,5 +1,11 @@
 import { ref } from 'vue'
-import { getRecibosAdmin, importarNominaAdmin, type NominaImportItemPayload } from '../api/admin'
+import {
+  getEmployeesAdmin,
+  getRecibosAdmin,
+  importarNominaAdmin,
+  type AdminEmployeeDirectoryItem,
+  type NominaImportItemPayload,
+} from '../api/admin'
 import type { Recibo } from '../types/payroll'
 
 interface RawRecord {
@@ -314,6 +320,7 @@ export const useAdminPayroll = () => {
 
   const recibosExistentes = ref<Recibo[]>([])
   const reciboSeleccionado = ref<Recibo | null>(null)
+  const empleadosDirectorio = ref<AdminEmployeeDirectoryItem[]>([])
 
   const loadingImport = ref(false)
   const importProgress = ref(0)
@@ -460,15 +467,27 @@ export const useAdminPayroll = () => {
     loadingSearch.value = true
 
     try {
-      const data = await getRecibosAdmin(query, limit)
-      recibosExistentes.value = data
+      const [recibosResult, empleadosResult] = await Promise.allSettled([
+        getRecibosAdmin(query, limit),
+        getEmployeesAdmin(query),
+      ])
 
-      if (!reciboSeleccionado.value && data.length) {
-        reciboSeleccionado.value = data[0]
+      if (recibosResult.status === 'fulfilled') {
+        recibosExistentes.value = recibosResult.value
+
+        if (!reciboSeleccionado.value && recibosResult.value.length) {
+          reciboSeleccionado.value = recibosResult.value[0]
+        }
+      } else {
+        errorMessage.value = 'Could not fetch existing receipts.'
+        recibosExistentes.value = []
       }
-    } catch {
-      errorMessage.value = 'Could not fetch existing receipts.'
-      recibosExistentes.value = []
+
+      if (empleadosResult.status === 'fulfilled') {
+        empleadosDirectorio.value = empleadosResult.value
+      } else {
+        empleadosDirectorio.value = []
+      }
     } finally {
       loadingSearch.value = false
     }
@@ -511,6 +530,7 @@ export const useAdminPayroll = () => {
     search,
     recibosExistentes,
     reciboSeleccionado,
+    empleadosDirectorio,
     loadingImport,
     importProgress,
     loadingSearch,

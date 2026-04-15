@@ -12,7 +12,7 @@
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <DeltaLogo size="lg" />
-            <p class="text-xs text-gray-500">Parque Industrial Delta, Monterrey, N.L.</p>
+            <p class="text-xs text-gray-500">Payroll system statement</p>
           </div>
           <div class="flex flex-col items-start gap-3 sm:items-end">
             <div class="text-left sm:text-right">
@@ -63,32 +63,56 @@
         <div class="rounded-xl border border-slate-100 bg-white p-4">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-delta-blue">Earnings</h3>
         <div v-if="earningsRows.length" class="space-y-2 text-sm text-gray-700">
-          <div class="overflow-x-auto pb-1">
-            <div class="min-w-[520px] space-y-2">
-          <div
-            class="grid border-b border-slate-100 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-500"
-            :class="showYtd ? 'grid-cols-[2.2fr_0.9fr_1fr_1fr_1fr]' : 'grid-cols-[2.6fr_1fr_1fr_1fr]'"
-          >
-            <span>Description</span>
-            <span class="text-right">Qty.</span>
-            <span class="text-right">Rate</span>
-            <span class="text-right">Total</span>
-            <span v-if="showYtd" class="text-right">YTD</span>
+          <div class="space-y-2 sm:hidden">
+            <article
+              v-for="(earning, index) in earningsRows"
+              :key="`earning-mobile-${index}`"
+              class="rounded-lg border border-slate-100 bg-slate-50 p-3"
+            >
+              <p class="text-sm font-semibold text-slate-800">{{ earning.description }}</p>
+              <div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                <p class="text-slate-500">Qty.</p>
+                <p class="text-right font-medium text-slate-700">{{ earning.quantity }}</p>
+                <p class="text-slate-500">Rate</p>
+                <p class="text-right font-medium text-slate-700">${{ formatCurrency(earning.rate) }}</p>
+                <p class="text-slate-500">Total</p>
+                <p class="text-right font-semibold text-slate-900">${{ formatCurrency(earning.total) }}</p>
+                <template v-if="showYtd">
+                  <p class="text-slate-500">YTD</p>
+                  <p class="text-right font-medium text-slate-700">
+                    {{ earning.ytd === null ? 'N/A' : `$${formatCurrency(earning.ytd)}` }}
+                  </p>
+                </template>
+              </div>
+            </article>
           </div>
-          <div
-            v-for="(earning, index) in earningsRows"
-            :key="`earning-${index}`"
-            class="grid"
-            :class="showYtd ? 'grid-cols-[2.2fr_0.9fr_1fr_1fr_1fr]' : 'grid-cols-[2.6fr_1fr_1fr_1fr]'"
-          >
-            <span class="truncate pr-2">{{ earning.description }}</span>
-            <span class="text-right">{{ earning.quantity }}</span>
-            <span class="text-right">${{ formatCurrency(earning.rate) }}</span>
-            <span class="text-right">${{ formatCurrency(earning.total) }}</span>
-            <span v-if="showYtd" class="text-right font-medium text-slate-600">
-              {{ earning.ytd === null ? 'N/A' : `$${formatCurrency(earning.ytd)}` }}
-            </span>
-          </div>
+
+          <div class="earnings-scroll -mx-1 hidden overflow-x-auto px-1 pb-1 sm:block">
+            <div class="min-w-130 space-y-2">
+              <div
+                class="grid border-b border-slate-100 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-500"
+                :class="showYtd ? 'grid-cols-[2.2fr_0.9fr_1fr_1fr_1fr]' : 'grid-cols-[2.6fr_1fr_1fr_1fr]'"
+              >
+                <span>Description</span>
+                <span class="text-right">Qty.</span>
+                <span class="text-right">Rate</span>
+                <span class="text-right">Total</span>
+                <span v-if="showYtd" class="text-right">YTD</span>
+              </div>
+              <div
+                v-for="(earning, index) in earningsRows"
+                :key="`earning-${index}`"
+                class="grid"
+                :class="showYtd ? 'grid-cols-[2.2fr_0.9fr_1fr_1fr_1fr]' : 'grid-cols-[2.6fr_1fr_1fr_1fr]'"
+              >
+                <span class="truncate pr-2">{{ earning.description }}</span>
+                <span class="text-right">{{ earning.quantity }}</span>
+                <span class="text-right">${{ formatCurrency(earning.rate) }}</span>
+                <span class="text-right">${{ formatCurrency(earning.total) }}</span>
+                <span v-if="showYtd" class="text-right font-medium text-slate-600">
+                  {{ earning.ytd === null ? 'N/A' : `$${formatCurrency(earning.ytd)}` }}
+                </span>
+              </div>
             </div>
           </div>
           <div class="flex justify-between">
@@ -308,3 +332,11 @@ const toNumberOrNull = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : null
 }
 </script>
+
+<style scoped>
+.earnings-scroll {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+}
+</style>

@@ -7,6 +7,7 @@ import {
 	deleteEmployeeByAdmin,
 	deletePrivilegedUserBySuperadmin,
 	deleteEmployeePaymentRecords,
+	getEmployeesAdmin,
 	getPrivilegedUsersBySuperadmin,
 	getRecibosAdmin,
 	importarNomina,
@@ -21,6 +22,7 @@ const ADMIN_PANEL_ROLES = [ROLES.ADMIN, ROLES.SUPERADMIN]
 router.post('/login', login)
 router.post('/admin/importar-nomina', auth, roleAuth(ADMIN_PANEL_ROLES), importarNomina)
 router.post('/admin/empleados', auth, roleAuth(ADMIN_PANEL_ROLES), createEmployeeByAdmin)
+router.get('/admin/empleados', auth, roleAuth(ADMIN_PANEL_ROLES), getEmployeesAdmin)
 router.get('/admin/recibos', auth, roleAuth(ADMIN_PANEL_ROLES), getRecibosAdmin)
 router.delete('/admin/empleados/:employeeId/recibos', auth, roleAuth(ADMIN_PANEL_ROLES), deleteEmployeePaymentRecords)
 router.patch('/admin/empleados/:employeeId/password', auth, roleAuth(ADMIN_PANEL_ROLES), updateEmployeePasswordByAdmin)

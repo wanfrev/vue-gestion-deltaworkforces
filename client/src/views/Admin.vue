@@ -189,6 +189,7 @@ const {
   search,
   recibosExistentes,
   reciboSeleccionado,
+  empleadosDirectorio,
   loadingImport,
   importProgress,
   loadingSearch,
@@ -233,6 +234,7 @@ const {
   search,
   recibosExistentes,
   reciboSeleccionado,
+  empleadosDirectorio,
   cargarRecibosAdmin,
   seleccionarRecibo,
 })
@@ -437,9 +439,9 @@ const confirmarEliminarRegistros = async () => {
 
   try {
     await eliminarRegistrosDesdeMenu(selectedEmployeeAction.value)
-    cerrarModalesAccion()
   } finally {
     modalActionLoading.value = false
+    cerrarModalesAccion()
   }
 }
 
@@ -452,9 +454,9 @@ const confirmarEliminarEmpleado = async () => {
 
   try {
     await eliminarEmpleadoDesdeMenu(selectedEmployeeAction.value)
-    cerrarModalesAccion()
   } finally {
     modalActionLoading.value = false
+    cerrarModalesAccion()
   }
 }
 
@@ -467,9 +469,9 @@ const confirmarCambioPassword = async (password: string) => {
 
   try {
     await cambiarPasswordDesdeMenu(selectedEmployeeAction.value, password)
-    cerrarModalesAccion()
   } finally {
     modalActionLoading.value = false
+    cerrarModalesAccion()
   }
 }
 

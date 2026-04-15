@@ -110,11 +110,13 @@ export const getMiReciboPDF = async (req: Request, res: Response) => {
     const mappedRecibo = mapPaymentRecordToReciboPayload(paymentRecord.toJSON() as Record<string, unknown>)
 
     const pdfBuffer = await generarReciboPDF({
+      id: mappedRecibo.id,
       User: {
         nombre: mappedRecibo.User?.nombre,
       },
       fecha_pago: mappedRecibo.fecha_pago,
       periodo: mappedRecibo.periodo,
+      estado: mappedRecibo.estado,
       monto: mappedRecibo.monto,
       detalles: mappedRecibo.detalles,
     })
