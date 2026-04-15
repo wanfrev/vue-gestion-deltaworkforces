@@ -93,10 +93,12 @@
           <AdminPaymentsHistorySection
             v-else-if="seccionActiva === 'historial-pagos'"
             :loading-search="loadingSearch"
+            :search="historialPagosSearch"
             :recibos-existentes-count="recibosExistentes.length"
             :historial-agrupado-por-empleado="historialAgrupadoPorEmpleado"
             :empleado-historial-abierto="empleadoHistorialAbierto"
             :recibo-seleccionado-id="reciboSeleccionado?.id ?? null"
+            @update:search="updateHistorialPagosSearch"
             @toggle-employee-history="alternarEmpleadoHistorial"
             @toggle-recibo-history="alternarReciboHistorial"
             @view-all-payments="verTodosPagosEmpleado"
@@ -204,6 +206,7 @@ const {
 const {
   seccionActiva,
   empleadoHistorialAbierto,
+  historialPagosSearch,
   menuEmpleadoAbiertoId,
   empleadosConRegistros,
   empleadosFiltrados,
@@ -219,6 +222,7 @@ const {
   alternarMenuEmpleado,
   cerrarMenuEmpleado,
   abrirHistorialEmpleado,
+  updateHistorialPagosSearch,
   alternarReciboHistorial,
   alternarEmpleadoHistorial,
   verTodosPagosEmpleado,

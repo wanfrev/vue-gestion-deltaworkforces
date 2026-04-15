@@ -98,6 +98,7 @@ export const useAdminViewState = ({
   const seccionActiva = ref<AdminSection>('cargar-nomina')
   const empleadoHistorialAbierto = ref<string | null>(null)
   const empleadoHistorialCompletoKey = ref<string | null>(null)
+  const historialPagosSearch = ref('')
   const menuEmpleadoAbiertoId = ref<number | null>(null)
 
   const empleadosConRegistros = computed(() => {
@@ -279,6 +280,29 @@ export const useAdminViewState = ({
       .sort((left, right) => left.nombre.localeCompare(right.nombre))
   })
 
+  const historialAgrupadoPorEmpleadoFiltrado = computed(() => {
+    const query = normalizeSearchText(historialPagosSearch.value)
+
+    if (!query) {
+      return historialAgrupadoPorEmpleado.value
+    }
+
+    return historialAgrupadoPorEmpleado.value.filter((empleado) => {
+      const searchable = normalizeSearchText(
+        [empleado.nombre, empleado.quickbooksId, empleado.username].filter(Boolean).join(' '),
+      )
+
+      if (searchable.includes(query)) {
+        return true
+      }
+
+      return searchable
+        .split(/\s+/)
+        .filter(Boolean)
+        .some((token) => token.includes(query) || levenshteinDistance(token, query) <= 2)
+    })
+  })
+
   const historialEmpleadoCompleto = computed(() => {
     if (!empleadoHistorialCompletoKey.value) {
       return null
@@ -320,6 +344,10 @@ export const useAdminViewState = ({
     empleadoHistorialAbierto.value = key
     seleccionarRecibo(empleado?.pagos?.[0] ?? null)
     cerrarMenuEmpleado()
+  }
+
+  const updateHistorialPagosSearch = (value: string) => {
+    historialPagosSearch.value = value
   }
 
   const verTodosPagosEmpleado = (employeeKey: string) => {
@@ -381,6 +409,7 @@ export const useAdminViewState = ({
   return {
     seccionActiva,
     empleadoHistorialAbierto,
+    historialPagosSearch,
     menuEmpleadoAbiertoId,
     empleadosConRegistros,
     empleadosFiltrados,
@@ -388,7 +417,7 @@ export const useAdminViewState = ({
     totalPayoutMensual,
     quickbooksSyncStats,
     empleadosDataGrid,
-    historialAgrupadoPorEmpleado,
+    historialAgrupadoPorEmpleado: historialAgrupadoPorEmpleadoFiltrado,
     historialEmpleadoCompleto,
     formatMoney,
     cambiarSeccion,
@@ -396,6 +425,7 @@ export const useAdminViewState = ({
     alternarMenuEmpleado,
     cerrarMenuEmpleado,
     abrirHistorialEmpleado,
+    updateHistorialPagosSearch,
     alternarReciboHistorial,
     alternarEmpleadoHistorial,
     verTodosPagosEmpleado,

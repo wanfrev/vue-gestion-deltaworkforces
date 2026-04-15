@@ -13,6 +13,18 @@
     <div v-if="loadingSearch" class="mt-4 rounded-lg bg-delta-gray p-3 text-sm text-gray-600">Loading receipts...</div>
 
     <div v-else class="mt-4 space-y-3">
+      <div>
+        <label for="payment-history-search" class="sr-only">Search employee</label>
+        <input
+          id="payment-history-search"
+          :value="search"
+          type="search"
+          placeholder="Search employee by name, email, or QuickBooks ID"
+          class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-delta-blue transition placeholder:text-slate-400 focus:border-delta-blue focus:ring-2"
+          @input="emit('update:search', ($event.target as HTMLInputElement).value)"
+        />
+      </div>
+
       <article
         v-for="empleado in historialAgrupadoPorEmpleado"
         :key="empleado.key"
@@ -97,6 +109,7 @@ interface HistorialEmpleadoItem {
 
 defineProps<{
   loadingSearch: boolean
+  search: string
   recibosExistentesCount: number
   historialAgrupadoPorEmpleado: HistorialEmpleadoItem[]
   empleadoHistorialAbierto: string | null
@@ -104,6 +117,7 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
+  (event: 'update:search', value: string): void
   (event: 'toggle-employee-history', employeeKey: string): void
   (event: 'toggle-recibo-history', recibo: Recibo, employeeKey?: string): void
   (event: 'view-all-payments', employeeKey: string): void
