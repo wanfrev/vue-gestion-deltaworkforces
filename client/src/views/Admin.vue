@@ -73,9 +73,19 @@
               <AdminCreateUserSection
                 :employee-form="employeeForm"
                 :creating-employee="creatingEmployee"
+                :can-create-superadmin="isSuperadmin"
                 @update:employee-form="updateEmployeeForm"
                 @create-user="crearEmpleado"
                 @clear-form="limpiarFormularioEmpleado"
+              />
+            </div>
+
+            <div v-if="isSuperadmin" class="mt-4">
+              <AdminPrivilegedUsersSection
+                :users="privilegedUsers"
+                :loading="loadingPrivilegedUsers"
+                :deleting-user-id="deletingPrivilegedUserId"
+                @delete-user="solicitarEliminarPrivilegedUser"
               />
             </div>
           </section>
@@ -158,13 +168,16 @@ import AdminEmployeesOverviewSection from '../components/admin/AdminEmployeesOve
 import AdminPasswordCard from '../components/admin/AdminPasswordCard.vue'
 import AdminPaymentsHistorySection from '../components/admin/AdminPaymentsHistorySection.vue'
 import AdminPayrollImportSection from '../components/admin/AdminPayrollImportSection.vue'
+import AdminPrivilegedUsersSection from '../components/admin/AdminPrivilegedUsersSection.vue'
 import AdminSidebar from '../components/admin/AdminSidebar.vue'
 import { useAdminPayroll } from '../composables/useAdminPayroll'
 import { useAdminUserManagement } from '../composables/useAdminUserManagement'
 import { useAuth } from '../composables/useAuth'
 import { type AdminSection, useAdminViewState } from '../composables/useAdminViewState'
+import { ROLES } from '../constants/roles'
 
 const { logout, authStore } = useAuth()
+const isSuperadmin = computed(() => authStore.user?.rol === ROLES.SUPERADMIN)
 
 const {
   rawInput,
@@ -224,13 +237,19 @@ const {
   employeeForm,
   creatingEmployee,
   deletingEmployeeId,
+  privilegedUsers,
+  loadingPrivilegedUsers,
+  deletingPrivilegedUserId,
   updateEmployeeForm,
   limpiarFormularioEmpleado,
   crearEmpleado,
   eliminarRegistrosDesdeMenu,
   cambiarPasswordDesdeMenu,
   eliminarEmpleadoDesdeMenu,
+  cargarUsuariosPrivilegiados,
+  eliminarPrivilegedUserDesdeMenu,
 } = useAdminUserManagement({
+  isSuperadmin: isSuperadmin.value,
   limpiarMensajes,
   setSuccessMessage: (message) => {
     successMessage.value = message
@@ -253,6 +272,7 @@ const confirmDeleteEmployeeVisible = ref(false)
 const changePasswordVisible = ref(false)
 const modalActionLoading = ref(false)
 const mobileSidebarOpen = ref(false)
+const selectedPrivilegedUserAction = ref<{ id: number; username: string; role: 'superadmin' | 'admin' } | null>(null)
 
 const cerrarMenuMovil = () => {
   mobileSidebarOpen.value = false
@@ -333,6 +353,10 @@ watch([successMessage, errorMessage, autoCreationNotice], ([success, error, noti
 
 onMounted(async () => {
   await cargarRecibosAdmin('', 200)
+
+  if (isSuperadmin.value) {
+    await cargarUsuariosPrivilegiados()
+  }
 })
 
 const updateDefaultEmployeeName = (value: string) => {
@@ -384,6 +408,20 @@ const solicitarCambioPassword = (empleado: EmployeeActionCandidate) => {
   confirmDeleteRecordsVisible.value = false
   confirmDeleteEmployeeVisible.value = false
   changePasswordVisible.value = true
+}
+
+const solicitarEliminarPrivilegedUser = (user: { id: number; username: string; role: 'superadmin' | 'admin' }) => {
+  selectedPrivilegedUserAction.value = user
+  void confirmarEliminarPrivilegedUser()
+}
+
+const confirmarEliminarPrivilegedUser = async () => {
+  if (!selectedPrivilegedUserAction.value) {
+    return
+  }
+
+  await eliminarPrivilegedUserDesdeMenu(selectedPrivilegedUserAction.value)
+  selectedPrivilegedUserAction.value = null
 }
 
 const confirmarEliminarRegistros = async () => {

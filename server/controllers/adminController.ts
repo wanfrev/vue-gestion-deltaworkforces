@@ -42,6 +42,24 @@ interface AutoCreatedUserSummary {
   quickbooksId: string
 }
 
+const PRIVILEGED_ROLES: Role[] = [ROLES.ADMIN, ROLES.SUPERADMIN]
+
+const isSuperadmin = (role?: Role): boolean => {
+  return role === ROLES.SUPERADMIN
+}
+
+const canCreateRoleByActor = (actorRole: Role, targetRole: Role): boolean => {
+  if (targetRole === ROLES.EMPLEADO || targetRole === ROLES.ADMIN) {
+    return actorRole === ROLES.ADMIN || actorRole === ROLES.SUPERADMIN
+  }
+
+  if (targetRole === ROLES.SUPERADMIN) {
+    return actorRole === ROLES.SUPERADMIN
+  }
+
+  return false
+}
+
 const parseNumber = (value: unknown): number => {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? value : 0
@@ -1202,6 +1220,13 @@ export const createEmployeeByAdmin = async (req: Request, res: Response) => {
   const transaction = await sequelize.transaction()
 
   try {
+    const actorRole = req.user?.rol
+
+    if (!actorRole) {
+      await transaction.rollback()
+      return res.status(401).json({ message: 'Usuario autenticado no válido.' })
+    }
+
     const payload = req.body as CreateEmployeeByAdminPayload
 
     const username = String(payload.username ?? '')
@@ -1230,7 +1255,17 @@ export const createEmployeeByAdmin = async (req: Request, res: Response) => {
 
     if (!isRole(requestedRole)) {
       await transaction.rollback()
-      return res.status(400).json({ message: 'role debe ser admin o empleado.' })
+      return res.status(400).json({ message: 'role debe ser superadmin, admin o empleado.' })
+    }
+
+    if (!canCreateRoleByActor(actorRole, role)) {
+      await transaction.rollback()
+      return res.status(403).json({
+        message:
+          role === ROLES.SUPERADMIN
+            ? 'Solo un superadmin puede crear usuarios superadmin.'
+            : 'No tienes permisos para crear usuarios con ese rol.',
+      })
     }
 
     if (role === ROLES.EMPLEADO && (!quickbooksId || !firstName || !lastName)) {
@@ -1303,9 +1338,11 @@ export const createEmployeeByAdmin = async (req: Request, res: Response) => {
 
     return res.status(201).json({
       message:
-        role === ROLES.ADMIN
-          ? 'Administrador creado correctamente.'
-          : 'Empleado y usuario creados correctamente.',
+        role === ROLES.SUPERADMIN
+          ? 'Superadmin creado correctamente.'
+          : role === ROLES.ADMIN
+            ? 'Administrador creado correctamente.'
+            : 'Empleado y usuario creados correctamente.',
       data: {
         username,
         role,
@@ -1549,5 +1586,101 @@ export const deleteEmployeeByAdmin = async (req: Request, res: Response) => {
   } catch {
     await transaction.rollback()
     return res.status(500).json({ msg: 'No fue posible eliminar al empleado.' })
+  }
+}
+
+export const getPrivilegedUsersBySuperadmin = async (req: Request, res: Response) => {
+  try {
+    if (!isSuperadmin(req.user?.rol)) {
+      return res.status(403).json({ msg: 'Solo un superadmin puede ver usuarios admin/superadmin.' })
+    }
+
+    const users = await User.findAll({
+      where: {
+        role: {
+          [Op.in]: PRIVILEGED_ROLES,
+        },
+      },
+      attributes: ['id', 'username', 'role', 'createdAt', 'updatedAt'],
+      order: [
+        ['role', 'ASC'],
+        ['username', 'ASC'],
+      ],
+    })
+
+    return res.json({
+      data: users.map((user) => {
+        const id = Number(user.getDataValue('id'))
+        const role = user.getDataValue('role') as Role
+
+        return {
+          id,
+          username: String(user.getDataValue('username') ?? ''),
+          role,
+          createdAt: user.getDataValue('createdAt'),
+          updatedAt: user.getDataValue('updatedAt'),
+          canDelete: req.user?.id !== id,
+        }
+      }),
+    })
+  } catch {
+    return res.status(500).json({ msg: 'No fue posible consultar usuarios admin/superadmin.' })
+  }
+}
+
+export const deletePrivilegedUserBySuperadmin = async (req: Request, res: Response) => {
+  const transaction = await sequelize.transaction()
+
+  try {
+    if (!isSuperadmin(req.user?.rol)) {
+      await transaction.rollback()
+      return res.status(403).json({ msg: 'Solo un superadmin puede eliminar usuarios admin/superadmin.' })
+    }
+
+    const userId = Number(req.params.userId)
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      await transaction.rollback()
+      return res.status(400).json({ msg: 'userId inválido.' })
+    }
+
+    if (userId === req.user.id) {
+      await transaction.rollback()
+      return res.status(400).json({ msg: 'No puedes eliminar tu propio usuario.' })
+    }
+
+    const user = await User.findOne({
+      where: {
+        id: userId,
+        role: {
+          [Op.in]: PRIVILEGED_ROLES,
+        },
+      },
+      transaction,
+    })
+
+    if (!user) {
+      await transaction.rollback()
+      return res.status(404).json({ msg: 'Usuario admin/superadmin no encontrado.' })
+    }
+
+    const username = String(user.getDataValue('username') ?? '')
+    const role = user.getDataValue('role') as Role
+
+    await user.destroy({ transaction })
+
+    await transaction.commit()
+
+    return res.json({
+      msg: 'Usuario admin/superadmin eliminado correctamente.',
+      user: {
+        id: userId,
+        username,
+        role,
+      },
+    })
+  } catch {
+    await transaction.rollback()
+    return res.status(500).json({ msg: 'No fue posible eliminar el usuario admin/superadmin.' })
   }
 }

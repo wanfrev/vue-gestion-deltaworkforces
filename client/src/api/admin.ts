@@ -32,7 +32,7 @@ interface ImportNominaResponse {
 export interface CreateEmployeeByAdminPayload {
   username: string
   password: string
-  role: 'admin' | 'empleado'
+  role: 'superadmin' | 'admin' | 'empleado'
   quickbooks_id?: string
   first_name?: string
   last_name?: string
@@ -44,10 +44,32 @@ interface CreateEmployeeByAdminResponse {
   message: string
   data: {
     username: string
-    role: 'admin' | 'empleado'
+    role: 'superadmin' | 'admin' | 'empleado'
     employee?: string
     quickbooks_id?: string
     employee_id: number | null
+  }
+}
+
+export interface PrivilegedUser {
+  id: number
+  username: string
+  role: 'superadmin' | 'admin'
+  createdAt: string
+  updatedAt: string
+  canDelete: boolean
+}
+
+interface PrivilegedUsersResponse {
+  data: PrivilegedUser[]
+}
+
+interface DeletePrivilegedUserResponse {
+  msg: string
+  user: {
+    id: number
+    username: string
+    role: 'superadmin' | 'admin'
   }
 }
 
@@ -114,5 +136,15 @@ export const updateEmployeePasswordAdmin = async (employeeId: number, password: 
 
 export const deleteEmployeeAdmin = async (employeeId: number) => {
   const { data } = await http.delete<DeleteEmployeeAdminResponse>(`/admin/empleados/${employeeId}`)
+  return data
+}
+
+export const getPrivilegedUsersAdmin = async () => {
+  const { data } = await http.get<PrivilegedUsersResponse>('/admin/privileged-users')
+  return data.data
+}
+
+export const deletePrivilegedUserAdmin = async (userId: number) => {
+  const { data } = await http.delete<DeletePrivilegedUserResponse>(`/admin/privileged-users/${userId}`)
   return data
 }

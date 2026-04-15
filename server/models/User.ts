@@ -19,7 +19,7 @@ const createUserModel = (sequelize: Sequelize) => {
         allowNull: false,
       },
       role: {
-        type: DataTypes.ENUM('admin', 'empleado'),
+        type: DataTypes.ENUM('superadmin', 'admin', 'empleado'),
         allowNull: false,
         defaultValue: 'empleado',
       },

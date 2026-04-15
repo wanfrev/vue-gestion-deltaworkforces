@@ -3,6 +3,7 @@ import { sequelize, User } from '../models'
 
 const DEFAULT_ADMIN_USERNAME = 'admin_delta'
 const DEFAULT_ADMIN_PASSWORD = 'admin1234'
+const DEFAULT_ADMIN_ROLE = 'superadmin'
 
 async function main() {
   try {
@@ -13,6 +14,7 @@ async function main() {
       .trim()
       .toLowerCase()
     const password = String(process.env.ADMIN_PASSWORD ?? DEFAULT_ADMIN_PASSWORD).trim()
+    const role = String(process.env.ADMIN_ROLE ?? DEFAULT_ADMIN_ROLE).trim().toLowerCase()
 
     if (!username) {
       throw new Error('ADMIN_USERNAME no puede estar vacío.')
@@ -26,6 +28,10 @@ async function main() {
       throw new Error('ADMIN_PASSWORD debe tener al menos 8 caracteres.')
     }
 
+    if (role !== 'admin' && role !== 'superadmin') {
+      throw new Error('ADMIN_ROLE debe ser admin o superadmin.')
+    }
+
     const passwordHash = await bcrypt.hash(password, 10)
 
     const [adminUser, created] = await User.findOrCreate({
@@ -33,17 +39,17 @@ async function main() {
       defaults: {
         username,
         password_hash: passwordHash,
-        role: 'admin',
+        role,
       },
     })
 
     if (!created) {
       adminUser.set('password_hash', passwordHash)
-      adminUser.set('role', 'admin')
+      adminUser.set('role', role)
       await adminUser.save()
-      console.log(`Usuario admin actualizado: ${username}`)
+      console.log(`Usuario ${role} actualizado: ${username}`)
     } else {
-      console.log(`Usuario admin creado: ${username}`)
+      console.log(`Usuario ${role} creado: ${username}`)
     }
 
     await sequelize.close()

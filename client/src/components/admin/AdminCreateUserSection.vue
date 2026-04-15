@@ -1,7 +1,7 @@
 <template>
   <article class="rounded-xl border border-slate-200 bg-slate-50 p-4">
     <h3 class="text-base font-semibold text-delta-text">Create User</h3>
-    <p class="mt-1 text-sm text-gray-600">You can create employee or admin users.</p>
+    <p class="mt-1 text-sm text-gray-600">You can create employee or admin users. Superadmin can also create superadmin users.</p>
 
     <div class="mt-4 grid gap-2 sm:grid-cols-2">
       <select
@@ -11,11 +11,14 @@
       >
         <option value="empleado">Employee</option>
         <option value="admin">Admin</option>
+        <option v-if="canCreateSuperadmin" value="superadmin">Superadmin</option>
       </select>
 
       <div class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
         {{ employeeForm.role === 'admin'
             ? 'An admin user will be created (no employee profile).'
+            : employeeForm.role === 'superadmin'
+              ? 'A superadmin user will be created (full admin control).'
             : 'An employee user with linked profile will be created.' }}
       </div>
 
@@ -77,7 +80,7 @@
 
     <div class="mt-4 flex flex-wrap gap-2">
       <DeltaButton :loading="creatingEmployee" @click="emit('create-user')">
-        {{ employeeForm.role === 'admin' ? 'Create Admin' : 'Create Employee' }}
+        {{ employeeForm.role === 'superadmin' ? 'Create Superadmin' : employeeForm.role === 'admin' ? 'Create Admin' : 'Create Employee' }}
       </DeltaButton>
       <DeltaButton variant="secondary" @click="emit('clear-form')">Clear form</DeltaButton>
     </div>
@@ -90,7 +93,7 @@ import DeltaButton from '../common/DeltaButton.vue'
 interface EmployeeFormState {
   username: string
   password: string
-  role: 'admin' | 'empleado'
+  role: 'superadmin' | 'admin' | 'empleado'
   quickbooks_id: string
   first_name: string
   last_name: string
@@ -101,6 +104,7 @@ interface EmployeeFormState {
 const props = defineProps<{
   employeeForm: EmployeeFormState
   creatingEmployee: boolean
+  canCreateSuperadmin: boolean
 }>()
 
 const emit = defineEmits<{

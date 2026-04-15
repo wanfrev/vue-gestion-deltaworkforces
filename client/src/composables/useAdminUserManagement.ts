@@ -1,15 +1,18 @@
 import { ref } from 'vue'
 import {
   createEmployeeAdmin,
+  deletePrivilegedUserAdmin,
   deleteEmployeeAdmin,
   deleteEmployeePaymentRecordsAdmin,
+  getPrivilegedUsersAdmin,
+  type PrivilegedUser,
   updateEmployeePasswordAdmin,
 } from '../api/admin'
 
 interface EmployeeFormState {
   username: string
   password: string
-  role: 'admin' | 'empleado'
+  role: 'superadmin' | 'admin' | 'empleado'
   quickbooks_id: string
   first_name: string
   last_name: string
@@ -23,7 +26,14 @@ interface DeleteEmployeeCandidate {
   registros: number
 }
 
+interface DeletePrivilegedUserCandidate {
+  id: number
+  username: string
+  role: 'superadmin' | 'admin'
+}
+
 interface UseAdminUserManagementOptions {
+  isSuperadmin: boolean
   limpiarMensajes: () => void
   setSuccessMessage: (message: string) => void
   setErrorMessage: (message: string) => void
@@ -31,6 +41,7 @@ interface UseAdminUserManagementOptions {
 }
 
 export const useAdminUserManagement = ({
+  isSuperadmin,
   limpiarMensajes,
   setSuccessMessage,
   setErrorMessage,
@@ -38,6 +49,9 @@ export const useAdminUserManagement = ({
 }: UseAdminUserManagementOptions) => {
   const creatingEmployee = ref(false)
   const deletingEmployeeId = ref<number | null>(null)
+  const privilegedUsers = ref<PrivilegedUser[]>([])
+  const loadingPrivilegedUsers = ref(false)
+  const deletingPrivilegedUserId = ref<number | null>(null)
   const employeeForm = ref<EmployeeFormState>({
     username: '',
     password: '',
@@ -100,6 +114,11 @@ export const useAdminUserManagement = ({
       return
     }
 
+    if (payload.role === 'superadmin' && !isSuperadmin) {
+      setErrorMessage('Only a superadmin can create another superadmin.')
+      return
+    }
+
     if (
       payload.role === 'empleado' &&
       (!payload.quickbooks_id || !payload.first_name || !payload.last_name)
@@ -112,9 +131,19 @@ export const useAdminUserManagement = ({
 
     try {
       await createEmployeeAdmin(payload)
-      setSuccessMessage(payload.role === 'admin' ? 'Admin user created successfully.' : 'Employee user created successfully.')
+      setSuccessMessage(
+        payload.role === 'superadmin'
+          ? 'Superadmin user created successfully.'
+          : payload.role === 'admin'
+            ? 'Admin user created successfully.'
+            : 'Employee user created successfully.',
+      )
       limpiarFormularioEmpleado()
       await cargarRecibosAdmin('', 200)
+
+      if (payload.role !== 'empleado') {
+        await cargarUsuariosPrivilegiados()
+      }
     } catch (error) {
       void error
       setErrorMessage('Could not create the user.')
@@ -182,15 +211,60 @@ export const useAdminUserManagement = ({
     }
   }
 
+  const cargarUsuariosPrivilegiados = async () => {
+    if (!isSuperadmin) {
+      privilegedUsers.value = []
+      return
+    }
+
+    loadingPrivilegedUsers.value = true
+
+    try {
+      privilegedUsers.value = await getPrivilegedUsersAdmin()
+    } catch (error) {
+      void error
+      setErrorMessage('Could not load admins and superadmins.')
+    } finally {
+      loadingPrivilegedUsers.value = false
+    }
+  }
+
+  const eliminarPrivilegedUserDesdeMenu = async (user: DeletePrivilegedUserCandidate) => {
+    limpiarMensajes()
+
+    if (!isSuperadmin) {
+      setErrorMessage('Only a superadmin can delete admins or superadmins.')
+      return
+    }
+
+    deletingPrivilegedUserId.value = user.id
+
+    try {
+      await deletePrivilegedUserAdmin(user.id)
+      setSuccessMessage(`${user.role} user ${user.username} deleted successfully.`)
+      await cargarUsuariosPrivilegiados()
+    } catch (error) {
+      void error
+      setErrorMessage('Could not delete the admin/superadmin user.')
+    } finally {
+      deletingPrivilegedUserId.value = null
+    }
+  }
+
   return {
     employeeForm,
     creatingEmployee,
     deletingEmployeeId,
+    privilegedUsers,
+    loadingPrivilegedUsers,
+    deletingPrivilegedUserId,
     updateEmployeeForm,
     limpiarFormularioEmpleado,
     crearEmpleado,
     eliminarRegistrosDesdeMenu,
     cambiarPasswordDesdeMenu,
     eliminarEmpleadoDesdeMenu,
+    cargarUsuariosPrivilegiados,
+    eliminarPrivilegedUserDesdeMenu,
   }
 }

@@ -34,13 +34,13 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../../store/auth'
-import { ROLES } from '../../constants/roles'
+import { isAdminPanelRole, ROLES } from '../../constants/roles'
 import DeltaButton from '../common/DeltaButton.vue'
 import DeltaLogo from '../common/DeltaLogo.vue'
 
 const authStore = useAuthStore()
 
-const canSeeAdminNav = computed(() => authStore.user?.rol === ROLES.ADMIN)
+const canSeeAdminNav = computed(() => isAdminPanelRole(authStore.user?.rol))
 const canSeeEmployeeNav = computed(() => authStore.user?.rol === ROLES.EMPLEADO)
 
 withDefaults(
