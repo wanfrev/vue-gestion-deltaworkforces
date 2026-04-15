@@ -1,7 +1,7 @@
 import { computed, nextTick, ref, type Ref } from 'vue'
 import type { Recibo } from '../types/payroll'
 
-export type EmployeeSection = 'mis-pagos' | 'mi-perfil'
+export type EmployeeSection = 'mis-pagos'
 export type ReceiptLimitOption = 'all' | 1 | 2 | 3 | 4
 
 interface UseEmployeeDashboardStateOptions {

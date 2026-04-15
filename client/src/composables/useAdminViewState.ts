@@ -1,7 +1,11 @@
 import { computed, ref, type Ref } from 'vue'
 import type { Recibo } from '../types/payroll'
 
-export type AdminSection = 'cargar-nomina' | 'gestionar-empleados' | 'historial-pagos' | 'configuracion'
+export type AdminSection =
+  | 'cargar-nomina'
+  | 'gestionar-empleados'
+  | 'historial-pagos'
+  | 'historial-pagos-empleado'
 
 interface UseAdminViewStateOptions {
   search: Ref<string>
@@ -93,6 +97,7 @@ export const useAdminViewState = ({
 }: UseAdminViewStateOptions) => {
   const seccionActiva = ref<AdminSection>('cargar-nomina')
   const empleadoHistorialAbierto = ref<string | null>(null)
+  const empleadoHistorialCompletoKey = ref<string | null>(null)
   const menuEmpleadoAbiertoId = ref<number | null>(null)
 
   const empleadosConRegistros = computed(() => {
@@ -274,10 +279,22 @@ export const useAdminViewState = ({
       .sort((left, right) => left.nombre.localeCompare(right.nombre))
   })
 
+  const historialEmpleadoCompleto = computed(() => {
+    if (!empleadoHistorialCompletoKey.value) {
+      return null
+    }
+
+    return historialAgrupadoPorEmpleado.value.find((item) => item.key === empleadoHistorialCompletoKey.value) || null
+  })
+
   const cambiarSeccion = (seccion: AdminSection) => {
     seccionActiva.value = seccion
 
-    if (seccion === 'historial-pagos' || seccion === 'gestionar-empleados') {
+    if (seccion !== 'historial-pagos-empleado') {
+      empleadoHistorialCompletoKey.value = null
+    }
+
+    if (seccion === 'historial-pagos' || seccion === 'historial-pagos-empleado' || seccion === 'gestionar-empleados') {
       void cargarRecibosAdmin('', 200)
     }
   }
@@ -299,9 +316,28 @@ export const useAdminViewState = ({
     const empleado = historialAgrupadoPorEmpleado.value.find((item) => item.key === key)
 
     cambiarSeccion('historial-pagos')
+    empleadoHistorialCompletoKey.value = null
     empleadoHistorialAbierto.value = key
     seleccionarRecibo(empleado?.pagos?.[0] ?? null)
     cerrarMenuEmpleado()
+  }
+
+  const verTodosPagosEmpleado = (employeeKey: string) => {
+    const empleado = historialAgrupadoPorEmpleado.value.find((item) => item.key === employeeKey)
+
+    if (!empleado) {
+      return
+    }
+
+    empleadoHistorialCompletoKey.value = employeeKey
+    seccionActiva.value = 'historial-pagos-empleado'
+    empleadoHistorialAbierto.value = employeeKey
+    seleccionarRecibo(null)
+  }
+
+  const volverAHistorialPagos = () => {
+    seccionActiva.value = 'historial-pagos'
+    seleccionarRecibo(null)
   }
 
   const seleccionarParaVista = (recibo: Recibo, employeeKey?: string) => {
@@ -353,6 +389,7 @@ export const useAdminViewState = ({
     quickbooksSyncStats,
     empleadosDataGrid,
     historialAgrupadoPorEmpleado,
+    historialEmpleadoCompleto,
     formatMoney,
     cambiarSeccion,
     buscarRecibos,
@@ -361,6 +398,8 @@ export const useAdminViewState = ({
     abrirHistorialEmpleado,
     alternarReciboHistorial,
     alternarEmpleadoHistorial,
+    verTodosPagosEmpleado,
+    volverAHistorialPagos,
     cerrarReciboActivo,
     imprimirVista,
   }

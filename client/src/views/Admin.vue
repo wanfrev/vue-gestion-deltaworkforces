@@ -89,18 +89,20 @@
             :recibo-seleccionado-id="reciboSeleccionado?.id ?? null"
             @toggle-employee-history="alternarEmpleadoHistorial"
             @toggle-recibo-history="alternarReciboHistorial"
+            @view-all-payments="verTodosPagosEmpleado"
             @close-recibo="cerrarReciboActivo"
             @print-recibo="imprimirVista"
           />
 
-          <section v-else id="configuracion" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <h2 class="text-lg font-semibold text-delta-text">Settings</h2>
-            <p class="mt-2 text-sm text-gray-600">Maintenance actions for the admin session.</p>
-            <div class="mt-4 flex flex-wrap gap-2">
-              <DeltaButton variant="secondary" @click="limpiarEntrada">Clear input</DeltaButton>
-              <DeltaButton variant="secondary" @click="limpiarMensajes">Clear messages</DeltaButton>
-            </div>
-          </section>
+          <AdminEmployeeAllPaymentsSection
+            v-else-if="seccionActiva === 'historial-pagos-empleado'"
+            :empleado="historialEmpleadoCompleto"
+            :recibo-seleccionado-id="reciboSeleccionado?.id ?? null"
+            @back="volverAHistorialPagos"
+            @toggle-recibo-history="alternarReciboHistorial"
+            @close-recibo="cerrarReciboActivo"
+            @print-recibo="imprimirVista"
+          />
         </div>
       </main>
 
@@ -151,12 +153,12 @@ import { Menu } from 'lucide-vue-next'
 import AdminAlerts from '../components/admin/AdminAlerts.vue'
 import AdminConfirmCard from '../components/admin/AdminConfirmCard.vue'
 import AdminCreateUserSection from '../components/admin/AdminCreateUserSection.vue'
+import AdminEmployeeAllPaymentsSection from '../components/admin/AdminEmployeeAllPaymentsSection.vue'
 import AdminEmployeesOverviewSection from '../components/admin/AdminEmployeesOverviewSection.vue'
 import AdminPasswordCard from '../components/admin/AdminPasswordCard.vue'
 import AdminPaymentsHistorySection from '../components/admin/AdminPaymentsHistorySection.vue'
 import AdminPayrollImportSection from '../components/admin/AdminPayrollImportSection.vue'
 import AdminSidebar from '../components/admin/AdminSidebar.vue'
-import DeltaButton from '../components/common/DeltaButton.vue'
 import { useAdminPayroll } from '../composables/useAdminPayroll'
 import { useAdminUserManagement } from '../composables/useAdminUserManagement'
 import { useAuth } from '../composables/useAuth'
@@ -197,6 +199,7 @@ const {
   quickbooksSyncStats,
   empleadosDataGrid,
   historialAgrupadoPorEmpleado,
+  historialEmpleadoCompleto,
   formatMoney,
   cambiarSeccion: cambiarSeccionBase,
   buscarRecibos: buscarRecibosBase,
@@ -205,6 +208,8 @@ const {
   abrirHistorialEmpleado,
   alternarReciboHistorial,
   alternarEmpleadoHistorial,
+  verTodosPagosEmpleado,
+  volverAHistorialPagos,
   cerrarReciboActivo,
   imprimirVista,
 } = useAdminViewState({

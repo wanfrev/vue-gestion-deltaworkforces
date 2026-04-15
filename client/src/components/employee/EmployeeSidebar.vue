@@ -44,18 +44,6 @@
           <Wallet :size="16" :stroke-width="2" :class="seccionActiva === 'mis-pagos' ? 'text-blue-300' : 'text-slate-400 group-hover:text-slate-100'" />
           <span>My Payments</span>
         </button>
-        <button
-          type="button"
-          class="group relative flex w-full items-center gap-2.5 overflow-hidden rounded-xl border px-3 py-2.5 text-left font-medium transition"
-          :class="seccionActiva === 'mi-perfil'
-            ? 'border-slate-700 bg-slate-800/85 text-slate-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
-            : 'border-transparent text-slate-300 hover:border-slate-700/85 hover:bg-slate-800/65 hover:text-slate-100'"
-          @click="onSectionClick('mi-perfil')"
-        >
-          <span class="absolute bottom-1.5 left-0 top-1.5 w-1 rounded-r-full transition" :class="seccionActiva === 'mi-perfil' ? 'bg-delta-blue' : 'bg-transparent group-hover:bg-slate-600/60'"></span>
-          <User :size="16" :stroke-width="2" :class="seccionActiva === 'mi-perfil' ? 'text-blue-300' : 'text-slate-400 group-hover:text-slate-100'" />
-          <span>My Profile</span>
-        </button>
         </nav>
 
         <div class="mt-auto border-t border-slate-800/80 pt-5">
@@ -86,10 +74,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { LogOut, User, Wallet, X } from 'lucide-vue-next'
+import { LogOut, Wallet, X } from 'lucide-vue-next'
 import DeltaLogo from '../common/DeltaLogo.vue'
 
-type EmployeeSection = 'mis-pagos' | 'mi-perfil'
+type EmployeeSection = 'mis-pagos'
 
 const props = defineProps<{
   seccionActiva: EmployeeSection

@@ -49,13 +49,6 @@
             @view-details="abrirDetalle"
             @download-pdf="descargarRecibo"
           />
-
-          <EmployeeProfileSection
-            v-else
-            :nombre="authStore.user?.nombre"
-            :username="authStore.user?.username"
-            :rol="authStore.user?.rol"
-          />
         </div>
       </main>
     </div>
@@ -67,7 +60,6 @@ import { computed, onMounted, ref } from 'vue'
 import { Menu } from 'lucide-vue-next'
 import EmployeeErrorAlert from '../components/employee/EmployeeErrorAlert.vue'
 import EmployeePaymentsSection from '../components/employee/EmployeePaymentsSection.vue'
-import EmployeeProfileSection from '../components/employee/EmployeeProfileSection.vue'
 import EmployeeSidebar from '../components/employee/EmployeeSidebar.vue'
 import { useEmployeeDashboardState } from '../composables/useEmployeeDashboardState'
 import { usePayroll } from '../composables/usePayroll'
@@ -119,7 +111,7 @@ const {
   descargarPdf,
 })
 
-const cambiarSeccionEmpleado = (section: 'mis-pagos' | 'mi-perfil') => {
+const cambiarSeccionEmpleado = (section: 'mis-pagos') => {
   cerrarMenuMovil()
   cambiarSeccionEmpleadoBase(section)
 }

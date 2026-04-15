@@ -59,26 +59,14 @@
         <button
           type="button"
           class="group relative flex w-full items-center gap-2.5 overflow-hidden rounded-xl border px-3 py-2.5 text-left font-medium transition"
-          :class="seccionActiva === 'historial-pagos'
+          :class="seccionActiva === 'historial-pagos' || seccionActiva === 'historial-pagos-empleado'
             ? 'border-slate-700 bg-slate-800/85 text-slate-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
             : 'border-transparent text-slate-300 hover:border-slate-700/85 hover:bg-slate-800/65 hover:text-slate-100'"
           @click="onSectionClick('historial-pagos')"
         >
-          <span class="absolute bottom-1.5 left-0 top-1.5 w-1 rounded-r-full transition" :class="seccionActiva === 'historial-pagos' ? 'bg-delta-blue' : 'bg-transparent group-hover:bg-slate-600/60'"></span>
-          <History :size="16" :stroke-width="2" :class="seccionActiva === 'historial-pagos' ? 'text-blue-300' : 'text-slate-400 group-hover:text-slate-100'" />
+          <span class="absolute bottom-1.5 left-0 top-1.5 w-1 rounded-r-full transition" :class="seccionActiva === 'historial-pagos' || seccionActiva === 'historial-pagos-empleado' ? 'bg-delta-blue' : 'bg-transparent group-hover:bg-slate-600/60'"></span>
+          <History :size="16" :stroke-width="2" :class="seccionActiva === 'historial-pagos' || seccionActiva === 'historial-pagos-empleado' ? 'text-blue-300' : 'text-slate-400 group-hover:text-slate-100'" />
           <span>Payment History</span>
-        </button>
-        <button
-          type="button"
-          class="group relative flex w-full items-center gap-2.5 overflow-hidden rounded-xl border px-3 py-2.5 text-left font-medium transition"
-          :class="seccionActiva === 'configuracion'
-            ? 'border-slate-700 bg-slate-800/85 text-slate-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
-            : 'border-transparent text-slate-300 hover:border-slate-700/85 hover:bg-slate-800/65 hover:text-slate-100'"
-          @click="onSectionClick('configuracion')"
-        >
-          <span class="absolute bottom-1.5 left-0 top-1.5 w-1 rounded-r-full transition" :class="seccionActiva === 'configuracion' ? 'bg-delta-blue' : 'bg-transparent group-hover:bg-slate-600/60'"></span>
-          <Settings :size="16" :stroke-width="2" :class="seccionActiva === 'configuracion' ? 'text-blue-300' : 'text-slate-400 group-hover:text-slate-100'" />
-          <span>Settings</span>
         </button>
         </nav>
 
@@ -110,10 +98,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { History, LogOut, Settings, Upload, Users, X } from 'lucide-vue-next'
+import { History, LogOut, Upload, Users, X } from 'lucide-vue-next'
 import DeltaLogo from '../common/DeltaLogo.vue'
-
-type AdminSection = 'cargar-nomina' | 'gestionar-empleados' | 'historial-pagos' | 'configuracion'
+import type { AdminSection } from '../../composables/useAdminViewState'
 
 const props = defineProps<{
   seccionActiva: AdminSection

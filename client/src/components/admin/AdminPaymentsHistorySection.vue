@@ -39,7 +39,7 @@
 
         <div v-if="empleadoHistorialAbierto === empleado.key" class="mt-4 space-y-2 border-t border-slate-100 pt-4">
           <article
-            v-for="recibo in empleado.pagos"
+            v-for="recibo in empleado.pagos.slice(0, 4)"
             :key="`existente-${recibo.id}`"
             class="rounded-xl border border-gray-200 bg-white transition hover:border-delta-blue/30"
           >
@@ -59,6 +59,16 @@
               <ReciboDetalle :recibo="recibo" @back="emit('close-recibo')" @print="emit('print-recibo')" />
             </section>
           </article>
+
+          <div v-if="empleado.pagos.length > 4" class="flex justify-end pt-1">
+            <button
+              type="button"
+              class="rounded-lg px-2 py-1 text-sm font-medium text-delta-blue transition hover:bg-delta-gray hover:text-blue-700"
+              @click="emit('view-all-payments', empleado.key)"
+            >
+              Ver todos
+            </button>
+          </div>
         </div>
       </article>
 
@@ -96,6 +106,7 @@ defineProps<{
 const emit = defineEmits<{
   (event: 'toggle-employee-history', employeeKey: string): void
   (event: 'toggle-recibo-history', recibo: Recibo, employeeKey?: string): void
+  (event: 'view-all-payments', employeeKey: string): void
   (event: 'close-recibo'): void
   (event: 'print-recibo'): void
 }>()
