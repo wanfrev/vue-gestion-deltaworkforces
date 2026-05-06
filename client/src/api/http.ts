@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { AUTH_SESSION_KEY } from '../types/auth'
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+const baseURL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 const http = axios.create({
   baseURL,
