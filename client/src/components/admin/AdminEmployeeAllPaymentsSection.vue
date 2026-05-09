@@ -99,6 +99,7 @@
           <div>
             <p class="text-sm font-semibold text-delta-text">{{ recibo.fecha_pago }}</p>
             <p class="text-xs text-gray-500">{{ recibo.periodo }}</p>
+            <p class="text-xs text-slate-400">{{ getPaystubSummary(recibo) }}</p>
           </div>
           <p class="text-sm font-semibold text-green-700">${{ Number(recibo.monto).toFixed(2) }}</p>
         </button>
@@ -189,6 +190,23 @@ const pagosFiltrados = computed(() => {
 const montoTotalFiltrado = computed(() => {
   return pagosFiltrados.value.reduce((sum, recibo) => sum + Number(recibo.monto || 0), 0)
 })
+
+const getPaystubSummary = (recibo: Recibo) => {
+  const checkNumber = String(
+    recibo.detalles?.check_number ||
+      recibo.detalles?.numero_cheque ||
+      recibo.detalles?.cheque ||
+      recibo.detalles?.checkNumber ||
+      '',
+  ).trim()
+
+  if (checkNumber) {
+    return `Check ${checkNumber}`
+  }
+
+  const paystubKey = String(recibo.paystubKey || recibo.detalles?.paystub_key || '').trim()
+  return paystubKey ? `Paystub ${paystubKey.slice(-8).toUpperCase()}` : `Receipt #${recibo.id}`
+}
 
 const limpiarFiltros = () => {
   filtroFechaDesde.value = ''

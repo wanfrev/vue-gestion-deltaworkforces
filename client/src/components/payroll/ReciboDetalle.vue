@@ -31,6 +31,7 @@
             <div class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm text-gray-600 sm:text-right">
               <p class="font-semibold text-delta-text">Payroll Receipt</p>
               <p><span class="font-semibold">Receipt:</span> #{{ recibo.id }}</p>
+              <p><span class="font-semibold">Paystub:</span> {{ paystubLabel }}</p>
               <p><span class="font-semibold">Payment date:</span> {{ recibo.fecha_pago }}</p>
             </div>
           </div>
@@ -62,66 +63,38 @@
       <section class="grid gap-4 p-4 sm:grid-cols-2 sm:p-8">
         <div class="rounded-xl border border-slate-100 bg-white p-4">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-delta-blue">Earnings</h3>
-        <div v-if="earningsRows.length" class="space-y-2 text-sm text-gray-700">
-          <div class="space-y-2 sm:hidden">
-            <article
-              v-for="(earning, index) in earningsRows"
-              :key="`earning-mobile-${index}`"
-              class="rounded-lg border border-slate-100 bg-slate-50 p-3"
-            >
-              <p class="text-sm font-semibold text-slate-800">{{ earning.description }}</p>
-              <div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                <p class="text-slate-500">Qty.</p>
-                <p class="text-right font-medium text-slate-700">{{ earning.quantity }}</p>
-                <p class="text-slate-500">Rate</p>
-                <p class="text-right font-medium text-slate-700">${{ formatCurrency(earning.rate) }}</p>
-                <p class="text-slate-500">Total</p>
-                <p class="text-right font-semibold text-slate-900">${{ formatCurrency(earning.total) }}</p>
-                <template v-if="showYtd">
-                  <p class="text-slate-500">YTD</p>
-                  <p class="text-right font-medium text-slate-700">
-                    {{ earning.ytd === null ? 'N/A' : `$${formatCurrency(earning.ytd)}` }}
-                  </p>
-                </template>
-              </div>
-            </article>
-          </div>
-
-          <div class="earnings-scroll -mx-1 hidden overflow-x-auto px-1 pb-1 sm:block">
-            <div class="min-w-130 space-y-2">
-              <div
-                class="grid border-b border-slate-100 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-500"
-                :class="showYtd ? 'grid-cols-[2.2fr_0.9fr_1fr_1fr_1fr]' : 'grid-cols-[2.6fr_1fr_1fr_1fr]'"
-              >
-                <span>Description</span>
-                <span class="text-right">Qty.</span>
-                <span class="text-right">Rate</span>
-                <span class="text-right">Total</span>
-                <span v-if="showYtd" class="text-right">YTD</span>
-              </div>
-              <div
-                v-for="(earning, index) in earningsRows"
-                :key="`earning-${index}`"
-                class="grid"
-                :class="showYtd ? 'grid-cols-[2.2fr_0.9fr_1fr_1fr_1fr]' : 'grid-cols-[2.6fr_1fr_1fr_1fr]'"
-              >
-                <span class="truncate pr-2">{{ earning.description }}</span>
-                <span class="text-right">{{ earning.quantity }}</span>
-                <span class="text-right">${{ formatCurrency(earning.rate) }}</span>
-                <span class="text-right">${{ formatCurrency(earning.total) }}</span>
-                <span v-if="showYtd" class="text-right font-medium text-slate-600">
-                  {{ earning.ytd === null ? 'N/A' : `$${formatCurrency(earning.ytd)}` }}
-                </span>
-              </div>
+        <div v-if="earningsRows.length" class="space-y-3 text-sm text-gray-700">
+          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+              <p class="text-xs uppercase tracking-wide text-slate-500">Worked Hours</p>
+              <p class="mt-1 text-lg font-semibold text-slate-900">{{ horasTrabajadas }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+              <p class="text-xs uppercase tracking-wide text-slate-500">Hourly Rate</p>
+              <p class="mt-1 text-lg font-semibold text-slate-900">${{ formatCurrency(pagoHora) }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+              <p class="text-xs uppercase tracking-wide text-slate-500">Overtime Hourly Rate</p>
+              <p class="mt-1 text-lg font-semibold text-slate-900">${{ formatCurrency(resolvedOvertimeRate) }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+              <p class="text-xs uppercase tracking-wide text-slate-500">Total Paid</p>
+              <p class="mt-1 text-lg font-semibold text-slate-900">${{ formatCurrency(totalPagado) }}</p>
             </div>
           </div>
-          <div class="flex justify-between">
-            <span>Base earnings</span>
-            <span>${{ formatCurrency(ingresoBase) }}</span>
+
+          <div v-if="overtimeHours > 0" class="rounded-xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-900">
+            <p class="text-xs uppercase tracking-wide text-amber-700">Overtime Hours</p>
+            <p class="mt-1 text-lg font-semibold">{{ overtimeHours }}</p>
           </div>
-          <div v-if="bonos > 0" class="flex justify-between font-semibold text-green-700">
-            <span>Bonuses</span>
-            <span>+ ${{ formatCurrency(bonos) }}</span>
+
+          <div class="flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <span class="font-medium text-slate-700">Base earnings</span>
+            <span class="text-base font-semibold text-slate-900">${{ formatCurrency(ingresoBase) }}</span>
+          </div>
+          <div v-if="bonos > 0" class="flex flex-col gap-2 rounded-xl border border-emerald-100 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <span class="font-medium text-emerald-800">Bonuses</span>
+            <span class="text-base font-semibold text-emerald-700">+ ${{ formatCurrency(bonos) }}</span>
           </div>
         </div>
         <p v-else class="text-sm text-gray-500">No earnings items available.</p>
@@ -129,19 +102,27 @@
 
         <div class="rounded-xl border border-slate-100 bg-white p-4">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-delta-blue">Summary</h3>
-        <div class="space-y-2 text-sm text-gray-700">
-          <div class="flex justify-between">
-            <span>Gross Pay</span>
-            <span class="font-semibold text-slate-800">${{ formatCurrency(totalIngresos) }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span>Deductions</span>
-            <span class="font-semibold text-red-600">- ${{ formatCurrency(deducciones) }}</span>
-          </div>
-          <div class="mt-4 flex justify-between border-t border-gray-200 pt-2 font-semibold text-delta-text">
-            <span>Net Pay</span>
-            <span class="text-emerald-700">${{ formatCurrency(totalPagado) }}</span>
-          </div>
+        <div class="space-y-3 text-sm text-gray-700">
+          <article class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <span class="font-medium text-slate-700">Gross Pay</span>
+              <span class="text-base font-semibold text-slate-900">${{ formatCurrency(totalIngresos) }}</span>
+            </div>
+          </article>
+
+          <article class="rounded-xl border border-rose-100 bg-rose-50 p-4">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <span class="font-medium text-rose-800">Deductions</span>
+              <span class="text-base font-semibold text-rose-700">- ${{ formatCurrency(deducciones) }}</span>
+            </div>
+          </article>
+
+          <article class="rounded-xl border border-emerald-100 bg-emerald-50 p-4 shadow-sm">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <span class="font-medium text-emerald-800">Net Pay</span>
+              <span class="text-2xl font-extrabold tracking-tight text-emerald-700">${{ formatCurrency(totalPagado) }}</span>
+            </div>
+          </article>
         </div>
         </div>
       </section>
@@ -173,6 +154,7 @@
           <p><span class="font-semibold text-slate-700">Payment date:</span> {{ recibo.fecha_pago }}</p>
           <p v-if="checkNumber"><span class="font-semibold text-slate-700">Check:</span> {{ checkNumber }}</p>
           <p v-else><span class="font-semibold text-slate-700">Check:</span> Not specified</p>
+          <p><span class="font-semibold text-slate-700">Paystub:</span> {{ paystubLabel }}</p>
         </div>
       </section>
 
@@ -216,6 +198,62 @@ interface EarningRow {
   ytd: number | null
 }
 
+const STANDARD_WEEKLY_HOURS = 40
+
+const buildLegacyEarningsRows = (): EarningRow[] => {
+  const hoursWorked = Number(
+    props.recibo.detalles?.hours_worked ||
+      props.recibo.detalles?.worked_hours ||
+      props.recibo.detalles?.horas_regulares ||
+      0,
+  )
+  const baseRate = Number(props.recibo.detalles?.pago_hora || 0)
+  const overtimeRate = Number(
+    props.recibo.detalles?.overtime_rate || props.recibo.detalles?.pago_hora_extra || 0,
+  )
+  const overtimeHours = Number(
+    props.recibo.detalles?.overtime_hours || props.recibo.detalles?.horas_extra || 0,
+  )
+
+  if (overtimeRate > 0 && (overtimeHours > 0 || hoursWorked > STANDARD_WEEKLY_HOURS)) {
+    const resolvedOvertimeHours = overtimeHours > 0 ? overtimeHours : Math.max(hoursWorked - STANDARD_WEEKLY_HOURS, 0)
+    const regularHours = overtimeHours > 0 ? Math.max(hoursWorked - resolvedOvertimeHours, 0) : Math.min(hoursWorked, STANDARD_WEEKLY_HOURS)
+
+    if (resolvedOvertimeHours > 0) {
+      return [
+        {
+          description: 'Regular Hours',
+          quantity: regularHours,
+          rate: baseRate,
+          total: regularHours * baseRate,
+          ytd: null,
+        },
+        {
+          description: 'Overtime Hours',
+          quantity: resolvedOvertimeHours,
+          rate: overtimeRate,
+          total: resolvedOvertimeHours * overtimeRate,
+          ytd: null,
+        },
+      ]
+    }
+  }
+
+  if (!hoursWorked && !baseRate) {
+    return []
+  }
+
+  return [
+    {
+      description: 'Worked Hours',
+      quantity: hoursWorked,
+      rate: baseRate,
+      total: hoursWorked * baseRate,
+      ytd: null,
+    },
+  ]
+}
+
 const earningsRows = computed<EarningRow[]>(() => {
   const raw = props.recibo.detalles?.earnings
 
@@ -239,32 +277,60 @@ const earningsRows = computed<EarningRow[]>(() => {
     })
   }
 
-  const legacyQuantity = Number(props.recibo.detalles?.horas_regulares || 0)
-  const legacyRate = Number(props.recibo.detalles?.pago_hora || 0)
-
-  if (!legacyQuantity && !legacyRate) {
-    return []
-  }
-
-  return [
-    {
-      description: 'Worked Hours',
-      quantity: legacyQuantity,
-      rate: legacyRate,
-      total: legacyQuantity * legacyRate,
-      ytd: null,
-    },
-  ]
+  return buildLegacyEarningsRows()
 })
 
-const showYtd = computed(() => earningsRows.value.some((row) => row.ytd !== null))
-
-const horasRegulares = computed(() => Number(props.recibo.detalles?.horas_regulares || 0))
+const horasTrabajadas = computed(() =>
+  Number(
+    props.recibo.detalles?.hours_worked ||
+      props.recibo.detalles?.worked_hours ||
+      props.recibo.detalles?.horas_regulares ||
+      0,
+  ),
+)
 const pagoHora = computed(() => Number(props.recibo.detalles?.pago_hora || 0))
+const overtimeRate = computed(() =>
+  Number(props.recibo.detalles?.overtime_rate || props.recibo.detalles?.pago_hora_extra || 0),
+)
+const overtimeHours = computed(() =>
+  Number(props.recibo.detalles?.overtime_hours || props.recibo.detalles?.horas_extra || 0),
+)
+const resolvedOvertimeRate = computed(() => {
+  if (overtimeRate.value > 0) {
+    return overtimeRate.value
+  }
+
+  const overtimeRow = earningsRows.value.find((row) => row.description.toLowerCase().includes('overtime'))
+  return overtimeRow?.rate || 0
+})
 const bonos = computed(() => Number(props.recibo.detalles?.bonos || 0))
 const deducciones = computed(() => Number(props.recibo.detalles?.deducciones || 0))
 const periodoPago = computed(() => String(props.recibo.detalles?.period || props.recibo.detalles?.periodo_pago || props.recibo.periodo || 'Not specified'))
 const checkNumber = computed(() => String(props.recibo.detalles?.check_number || props.recibo.detalles?.numero_cheque || props.recibo.detalles?.cheque || props.recibo.detalles?.checkNumber || '').trim())
+const paystubLabel = computed(() => {
+  if (checkNumber.value) {
+    return checkNumber.value
+  }
+
+  const explicitPaystub = String(
+    props.recibo.detalles?.paystub_id ||
+      props.recibo.detalles?.external_paystub_id ||
+      props.recibo.detalles?.recibo_id ||
+      '',
+  ).trim()
+
+  if (explicitPaystub) {
+    return explicitPaystub
+  }
+
+  const paystubKey = String(props.recibo.paystubKey || props.recibo.detalles?.paystub_key || '').trim()
+
+  if (!paystubKey) {
+    return `#${props.recibo.id}`
+  }
+
+  return paystubKey.length > 18 ? paystubKey.slice(-12).toUpperCase() : paystubKey
+})
 
 const totalPagado = computed(() => Number(props.recibo.detalles?.total_paid || props.recibo.monto || 0))
 
@@ -273,7 +339,7 @@ const ingresoBase = computed(() => {
     return earningsRows.value.reduce((sum, row) => sum + row.total, 0)
   }
 
-  return horasRegulares.value * pagoHora.value
+  return horasTrabajadas.value * pagoHora.value
 })
 const totalIngresos = computed(() => ingresoBase.value + bonos.value)
 
@@ -334,9 +400,4 @@ const toNumberOrNull = (value: unknown) => {
 </script>
 
 <style scoped>
-.earnings-scroll {
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
-  overscroll-behavior-x: contain;
-}
 </style>

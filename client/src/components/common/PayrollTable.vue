@@ -52,6 +52,7 @@
             <div>
               <p class="text-sm font-semibold leading-relaxed text-slate-700">{{ recibo.periodo }}</p>
               <p class="mt-0.5 text-xs leading-relaxed text-gray-500">Paid: {{ formatPayDate(recibo.fecha_pago) }}</p>
+              <p class="mt-0.5 text-xs leading-relaxed text-slate-400">{{ getPaystubSummary(recibo) }}</p>
             </div>
           </div>
 
@@ -147,6 +148,23 @@ const formatPayDate = (dateIso: string) => {
     day: 'numeric',
     year: 'numeric',
   })
+}
+
+const getPaystubSummary = (recibo: Recibo) => {
+  const checkNumber = String(
+    recibo.detalles?.check_number ||
+      recibo.detalles?.numero_cheque ||
+      recibo.detalles?.cheque ||
+      recibo.detalles?.checkNumber ||
+      '',
+  ).trim()
+
+  if (checkNumber) {
+    return `Check ${checkNumber}`
+  }
+
+  const paystubKey = String(recibo.paystubKey || recibo.detalles?.paystub_key || '').trim()
+  return paystubKey ? `Paystub ${paystubKey.slice(-8).toUpperCase()}` : `Receipt #${recibo.id}`
 }
 
 const isPaidStatus = (estado?: string) => {

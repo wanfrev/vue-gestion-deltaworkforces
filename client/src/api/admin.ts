@@ -9,6 +9,7 @@ export interface NominaImportItemPayload {
   periodo?: string
   desglose?: Record<string, unknown>
   checkNumber?: string
+  paystubKey?: string
 }
 
 interface ImportNominaResponse {

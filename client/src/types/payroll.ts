@@ -10,12 +10,17 @@ export interface ReciboDetalles {
   }>
   total_paid?: number
   status?: string
+  hours_worked?: number
   horas_regulares?: number
   pago_hora?: number
+  overtime_hours?: number
+  overtime_rate?: number
+  pago_hora_extra?: number
   deducciones?: number
   bonos?: number
   periodo_pago?: string
   cargo?: string
+  paystub_key?: string
   [key: string]: unknown
 }
 
@@ -32,6 +37,7 @@ export interface Recibo {
   periodo: string
   employeeId?: number
   quickbooksId?: string
+  paystubKey?: string
   estado?: string
   detalles: ReciboDetalles
   User?: ReciboEmpleado

@@ -131,7 +131,9 @@ const toNumberOrNull = (value: unknown): number | null => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-const resolveEarningsRows = (detalles: Record<string, unknown>): EarningRow[] => {
+const STANDARD_WEEKLY_HOURS = 40
+
+const buildEarningsRows = (detalles: Record<string, unknown>): EarningRow[] => {
   const raw = detalles.earnings
 
   if (Array.isArray(raw) && raw.length) {
@@ -157,22 +159,58 @@ const resolveEarningsRows = (detalles: Record<string, unknown>): EarningRow[] =>
     })
   }
 
-  const horas = toNumberOrZero(detalles.horas_regulares)
-  const pagoHora = toNumberOrZero(detalles.pago_hora)
+  const hoursWorked = toNumberOrZero(
+    detalles.hours_worked || detalles.worked_hours || detalles.horas_regulares,
+  )
+  const baseRate = toNumberOrZero(detalles.pago_hora)
+  const overtimeRate = toNumberOrZero(
+    detalles.overtime_rate || detalles.pago_hora_extra || detalles.tarifa_extra_hora,
+  )
+  const overtimeHours = toNumberOrZero(
+    detalles.overtime_hours || detalles.horas_extra || detalles.horas_overtime,
+  )
 
-  if (!horas && !pagoHora) {
+  if (!hoursWorked && !baseRate) {
     return []
+  }
+
+  if (overtimeRate > 0 && (overtimeHours > 0 || hoursWorked > STANDARD_WEEKLY_HOURS)) {
+    const resolvedOvertimeHours = overtimeHours > 0 ? overtimeHours : Math.max(hoursWorked - STANDARD_WEEKLY_HOURS, 0)
+    const regularHours = overtimeHours > 0 ? Math.max(hoursWorked - resolvedOvertimeHours, 0) : Math.min(hoursWorked, STANDARD_WEEKLY_HOURS)
+
+    if (resolvedOvertimeHours > 0) {
+      return [
+        {
+          description: 'Regular Hours',
+          quantity: regularHours,
+          rate: baseRate,
+          total: regularHours * baseRate,
+          ytd: null,
+        },
+        {
+          description: 'Overtime Hours',
+          quantity: resolvedOvertimeHours,
+          rate: overtimeRate,
+          total: resolvedOvertimeHours * overtimeRate,
+          ytd: null,
+        },
+      ]
+    }
   }
 
   return [
     {
-      description: 'Horas trabajadas',
-      quantity: horas,
-      rate: pagoHora,
-      total: horas * pagoHora,
+      description: 'Worked Hours',
+      quantity: hoursWorked,
+      rate: baseRate,
+      total: hoursWorked * baseRate,
       ytd: null,
     },
   ]
+}
+
+const resolveEarningsRows = (detalles: Record<string, unknown>): EarningRow[] => {
+  return buildEarningsRows(detalles)
 }
 
 const resolveStatusLabel = (status: unknown): string => {
@@ -220,6 +258,8 @@ export const generarReciboPDF = async (datosRecibo: ReciboPDFData): Promise<Buff
     const checkNumber = String(
       detalles.check_number || detalles.numero_cheque || detalles.cheque || detalles.checkNumber || '',
     ).trim()
+    const paystubKey = String(detalles.paystub_key || detalles.paystubKey || '').trim()
+    const paystubLabel = checkNumber || (paystubKey ? paystubKey.slice(-12).toUpperCase() : String(datosRecibo.id || 'N/A'))
     const showYtd = earningsRows.some((row) => row.ytd !== null)
     const companyLogo = await resolveCompanyLogo(datosRecibo.companyLogoBase64)
 
@@ -471,6 +511,7 @@ export const generarReciboPDF = async (datosRecibo: ReciboPDFData): Promise<Buff
                   <div class="line"><span class="label">Nombre</span><span class="value">${escapeHtml(empleado)}</span></div>
                   <div class="line"><span class="label">Puesto</span><span class="value">${escapeHtml(puesto)}</span></div>
                   <div class="line"><span class="label">Recibo</span><span class="value">#${escapeHtml(String(datosRecibo.id || 'N/A'))}</span></div>
+                  <div class="line"><span class="label">Paystub</span><span class="value">${escapeHtml(paystubLabel)}</span></div>
                 </article>
 
                 <article class="card">

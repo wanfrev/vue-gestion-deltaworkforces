@@ -31,6 +31,10 @@ const createPaymentRecordModel = (sequelize: Sequelize) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      paystub_key: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       payment_date: {
         type: DataTypes.DATEONLY,
         allowNull: false,

@@ -176,15 +176,20 @@ const normalizeRawToImportItem = (record: RawRecord): NominaImportItemPayload =>
     fecha: pick(record, ['fecha', 'fecha_pago', 'pay_date']),
     totalNeto: parseNumber(pick(record, ['total_neto', 'totalneto', 'monto', 'neto', 'net_pay'])),
     periodo,
+    checkNumber: pick(record, ['check_number', 'numero_cheque', 'cheque']),
+    paystubKey: pick(record, ['paystub_key', 'paystub_id', 'external_paystub_id', 'recibo_id']),
     desglose: {
-      horas_regulares: parseNumber(pick(record, ['horas_regulares', 'horas', 'horas_trabajadas'])),
+      hours_worked: parseNumber(pick(record, ['hours_worked', 'worked_hours', 'horas_regulares', 'horas', 'horas_trabajadas'])),
+      horas_regulares: parseNumber(pick(record, ['hours_worked', 'worked_hours', 'horas_regulares', 'horas', 'horas_trabajadas'])),
       pago_hora: parseNumber(pick(record, ['pago_hora', 'tasa', 'tarifa_hora'])),
+      overtime_rate: parseNumber(pick(record, ['overtime_rate', 'pago_hora_extra', 'tarifa_extra_hora'])),
+      overtime_hours: parseNumber(pick(record, ['overtime_hours', 'horas_extra', 'horas_overtime'])),
+      pago_hora_extra: parseNumber(pick(record, ['overtime_rate', 'pago_hora_extra', 'tarifa_extra_hora'])),
       deducciones: parseNumber(pick(record, ['deducciones', 'impuestos'])),
       bonos: parseNumber(pick(record, ['bonos', 'bonus'])),
       periodo_pago: periodo,
       cargo: pick(record, ['cargo', 'puesto']) || 'Not specified',
     },
-    checkNumber: pick(record, ['check_number', 'numero_cheque', 'cheque']),
   }
 }
 

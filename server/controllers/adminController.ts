@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt'
+import { createHash } from 'crypto'
 import { Request, Response } from 'express'
 import { parse } from 'csv-parse/sync'
 import { Op, col, fn, where as sequelizeWhere, type Transaction } from 'sequelize'
@@ -14,6 +15,7 @@ interface NominaImportItem {
   periodo?: string
   desglose?: Record<string, unknown>
   checkNumber?: string
+  paystubKey?: string
 }
 
 interface CreateEmployeeByAdminPayload {
@@ -96,6 +98,60 @@ const normalizeText = (value: unknown): string => {
     .replace(/[\u0300-\u036f]/g, '')
     .trim()
     .toLowerCase()
+}
+
+const STANDARD_WEEKLY_HOURS = 40
+
+interface EarningRow {
+  description: string
+  quantity: number
+  rate: number
+  total: number
+}
+
+const buildEarningsRows = (
+  workedHours: number,
+  hourlyRate: number,
+  overtimeRateRaw: unknown,
+  overtimeHoursRaw: unknown,
+): EarningRow[] => {
+  const overtimeRate = parseNumber(overtimeRateRaw)
+  const overtimeHours = parseNumber(overtimeHoursRaw)
+
+  if (!Number.isFinite(workedHours) || workedHours <= 0 || !Number.isFinite(hourlyRate) || hourlyRate <= 0) {
+    return []
+  }
+
+  if (overtimeRate > 0 && (overtimeHours > 0 || workedHours > STANDARD_WEEKLY_HOURS)) {
+    const resolvedOvertimeHours = overtimeHours > 0 ? overtimeHours : Math.max(workedHours - STANDARD_WEEKLY_HOURS, 0)
+    const regularHours = overtimeHours > 0 ? Math.max(workedHours - resolvedOvertimeHours, 0) : Math.min(workedHours, STANDARD_WEEKLY_HOURS)
+
+    if (resolvedOvertimeHours > 0) {
+      return [
+        {
+          description: 'Regular Hours',
+          quantity: regularHours,
+          rate: hourlyRate,
+          total: regularHours * hourlyRate,
+        },
+        {
+          description: 'Overtime Hours',
+          quantity: resolvedOvertimeHours,
+          rate: overtimeRate,
+          total: resolvedOvertimeHours * overtimeRate,
+        },
+      ]
+    }
+  }
+
+  return [
+    {
+      description: 'Worked Hours',
+      quantity: workedHours,
+      rate: hourlyRate,
+      total: workedHours * hourlyRate,
+    },
+  ]
 }
 
 const parseDateTokenToISO = (token: string): string => {
@@ -666,6 +722,30 @@ const parseExcelNomina = (
       ) ??
       getCellRawValueByAddress(worksheet, 'C18') ??
       getCellValueByAddress(worksheet, 'C18')
+    const overtimeRateRaw =
+      extractValueNearLabel(
+        worksheet,
+        ['Overtime Hourly Rate', 'Overtime Rate', 'Tarifa extra por hora', 'Pago extra por hora'],
+        [
+          { rowOffset: 0, colOffset: 1 },
+          { rowOffset: 0, colOffset: 2 },
+          { rowOffset: 1, colOffset: 0 },
+        ],
+      ) ??
+      getCellRawValueByAddress(worksheet, 'C18') ??
+      getCellValueByAddress(worksheet, 'C18') ??
+      getCellRawValueByAddress(worksheet, 'C19') ??
+      getCellValueByAddress(worksheet, 'C19')
+    const overtimeHoursRaw =
+      extractValueNearLabel(
+        worksheet,
+        ['Overtime Hours', 'Hours Overtime', 'Horas extra', 'Horas extras'],
+        [
+          { rowOffset: 0, colOffset: 1 },
+          { rowOffset: 0, colOffset: 2 },
+          { rowOffset: 1, colOffset: 0 },
+        ],
+      )
     const totalPaidRaw =
       extractValueNearLabel(
         worksheet,
@@ -692,8 +772,9 @@ const parseExcelNomina = (
 
     const workedHours = parseNumber(workedHoursRaw)
     const hourlyRate = parseNumber(hourlyRateRaw)
+    const earningsRows = buildEarningsRows(workedHours, hourlyRate, overtimeRateRaw, overtimeHoursRaw)
     const totalPaid = parseNumber(totalPaidRaw)
-    const earningTotal = workedHours * hourlyRate
+    const earningTotal = earningsRows.reduce((sum, row) => sum + row.total, 0)
     const periodDisplayStart = formatDateDisplay(startDateRaw) || periodStart
     const periodDisplayEnd = formatDateDisplay(endDateRaw) || periodEnd
     const periodDisplay =
@@ -711,21 +792,18 @@ const parseExcelNomina = (
         company: companyRaw || 'Empresa no especificada',
         employee: employeeName,
         period: periodDisplay,
-        earnings: [
-          {
-            description: 'Worked Hours',
-            quantity: workedHours,
-            rate: hourlyRate,
-            total: earningTotal,
-          },
-        ],
+        earnings: earningsRows,
         total_paid: totalPaid,
+        gross_earnings: earningTotal,
         status: 'Pagado',
         source_sheet: sheetName,
         hours_worked: workedHours,
         hourly_rate: hourlyRate,
         horas_regulares: workedHours,
         pago_hora: hourlyRate,
+        overtime_rate: parseNumber(overtimeRateRaw),
+        overtime_hours: parseNumber(overtimeHoursRaw),
+        pago_hora_extra: parseNumber(overtimeRateRaw),
         periodo_pago: periodDisplay,
       },
     })
@@ -745,6 +823,90 @@ const parseJsonSafe = (value: unknown): Record<string, unknown> => {
   } catch {
     return {}
   }
+}
+
+const stableStringify = (value: unknown): string => {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`
+  }
+
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    return `{${Object.keys(record)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+      .join(',')}}`
+  }
+
+  return JSON.stringify(value ?? null)
+}
+
+const buildContentPaystubKey = (payload: Record<string, unknown>): string => {
+  return createHash('sha256').update(stableStringify(payload)).digest('hex')
+}
+
+const resolvePaystubKey = (
+  item: NominaImportItem,
+  resolvedQuickbooksId: string,
+  checkNumber: string,
+): string => {
+  const explicitKey = String(
+    item.paystubKey ||
+      item.desglose?.paystub_key ||
+      item.desglose?.paystub_id ||
+      item.desglose?.external_paystub_id ||
+      '',
+  ).trim()
+
+  if (explicitKey) {
+    return `explicit:${explicitKey.toLowerCase()}`
+  }
+
+  if (checkNumber) {
+    return `check:${checkNumber.toLowerCase()}`
+  }
+
+  return `content:${buildContentPaystubKey({
+    quickbooksId: resolvedQuickbooksId,
+    paymentDate: item.fecha,
+    payPeriod: item.periodo,
+    netPay: item.totalNeto,
+    company: item.desglose?.company ?? item.desglose?.company_name ?? '',
+    job: item.desglose?.cargo ?? item.desglose?.puesto ?? item.desglose?.job ?? item.desglose?.position ?? '',
+    sourceSheet: item.desglose?.source_sheet ?? '',
+    earnings: item.desglose?.earnings ?? [],
+    hoursWorked: item.desglose?.hours_worked ?? item.desglose?.horas_regulares ?? '',
+    hourlyRate: item.desglose?.hourly_rate ?? item.desglose?.pago_hora ?? '',
+    overtimeHours: item.desglose?.overtime_hours ?? item.desglose?.horas_extra ?? '',
+    overtimeRate: item.desglose?.overtime_rate ?? item.desglose?.pago_hora_extra ?? '',
+  })}`
+}
+
+const buildLegacyPaymentRecordPaystubKey = (
+  paymentRecordData: Record<string, unknown>,
+  resolvedQuickbooksId: string,
+): string => {
+  const detalles = (paymentRecordData.details as Record<string, unknown> | undefined) ?? {}
+  const checkNumber = String(paymentRecordData.check_number || detalles.check_number || detalles.numero_cheque || '').trim()
+
+  if (checkNumber) {
+    return `check:${checkNumber.toLowerCase()}`
+  }
+
+  return `content:${buildContentPaystubKey({
+    quickbooksId: resolvedQuickbooksId,
+    paymentDate: paymentRecordData.payment_date ?? '',
+    payPeriod: paymentRecordData.pay_period ?? '',
+    netPay: Number(paymentRecordData.net_pay || 0),
+    company: detalles.company ?? detalles.company_name ?? '',
+    job: detalles.cargo ?? detalles.puesto ?? detalles.job ?? detalles.position ?? '',
+    sourceSheet: detalles.source_sheet ?? '',
+    earnings: detalles.earnings ?? [],
+    hoursWorked: detalles.hours_worked ?? detalles.horas_regulares ?? '',
+    hourlyRate: detalles.hourly_rate ?? detalles.pago_hora ?? '',
+    overtimeHours: detalles.overtime_hours ?? detalles.horas_extra ?? '',
+    overtimeRate: detalles.overtime_rate ?? detalles.pago_hora_extra ?? '',
+  })}`
 }
 
 const buildPeriodo = (item: {
@@ -842,10 +1004,22 @@ const mapRawRecordToNominaItem = (record: RawNominaRecord): NominaImportItem => 
       : typeof desglose === 'object' && desglose !== null
         ? (desglose as Record<string, unknown>)
         : {
+            hours_worked: parseNumber(
+              extractValue(record, ['hours_worked', 'worked_hours', 'horas_regulares', 'horas', 'horas_trabajadas']),
+            ),
             horas_regulares: parseNumber(
-              extractValue(record, ['horas_regulares', 'horas', 'horas_trabajadas']),
+              extractValue(record, ['hours_worked', 'worked_hours', 'horas_regulares', 'horas', 'horas_trabajadas']),
             ),
             pago_hora: parseNumber(extractValue(record, ['pago_hora', 'tasa', 'tarifa_hora'])),
+            overtime_rate: parseNumber(
+              extractValue(record, ['overtime_rate', 'pago_hora_extra', 'tarifa_extra_hora']),
+            ),
+            overtime_hours: parseNumber(
+              extractValue(record, ['overtime_hours', 'horas_extra', 'horas_overtime']),
+            ),
+            pago_hora_extra: parseNumber(
+              extractValue(record, ['overtime_rate', 'pago_hora_extra', 'tarifa_extra_hora']),
+            ),
             deducciones: parseNumber(extractValue(record, ['deducciones', 'impuestos'])),
             bonos: parseNumber(extractValue(record, ['bonos', 'bonus'])),
             periodo_pago: periodo,
@@ -873,6 +1047,9 @@ const mapRawRecordToNominaItem = (record: RawNominaRecord): NominaImportItem => 
     periodo,
     desglose: rawDesglose,
     checkNumber: String(extractValue(record, ['check_number', 'numero_cheque', 'cheque']) ?? ''),
+    paystubKey: String(
+      extractValue(record, ['paystub_key', 'paystub_id', 'external_paystub_id', 'recibo_id']) ?? '',
+    ),
   }
 }
 
@@ -939,6 +1116,7 @@ const normalizeNominaItem = (item: NominaImportItem): NominaImportItem => {
           ? item.desglose
           : {},
     checkNumber: String(item.checkNumber || '').trim(),
+    paystubKey: String(item.paystubKey || '').trim(),
   }
 }
 
@@ -1153,8 +1331,9 @@ export const importarNomina = async (req: Request, res: Response) => {
         const checkNumber = String(
           item.checkNumber || item.desglose?.check_number || item.desglose?.numero_cheque || '',
         ).trim()
+        const paystubKey = resolvePaystubKey(item, resolvedQuickbooksId, checkNumber)
 
-        const pagoExistente = await PaymentRecord.findOne({
+        const pagosDelMismoPeriodo = await PaymentRecord.findAll({
           where: {
             employee_id: employee.getDataValue('id'),
             payment_date: item.fecha,
@@ -1162,13 +1341,27 @@ export const importarNomina = async (req: Request, res: Response) => {
           },
           transaction,
         })
+        const pagoExistente = pagosDelMismoPeriodo.find((paymentRecord) => {
+          const data = paymentRecord.toJSON() as Record<string, unknown>
+          const storedPaystubKey = String(data.paystub_key || '').trim()
+
+          if (storedPaystubKey) {
+            return storedPaystubKey === paystubKey
+          }
+
+          return buildLegacyPaymentRecordPaystubKey(data, resolvedQuickbooksId) === paystubKey
+        })
 
         if (pagoExistente) {
           pagoExistente.set('net_pay', item.totalNeto)
           pagoExistente.set('gross_earnings', grossEarnings)
           pagoExistente.set('total_deductions', totalDeducciones)
           pagoExistente.set('check_number', checkNumber || null)
-          pagoExistente.set('details', detalles)
+          pagoExistente.set('paystub_key', paystubKey)
+          pagoExistente.set('details', {
+            ...detalles,
+            paystub_key: paystubKey,
+          })
           await pagoExistente.save({ transaction })
           recibosActualizados += 1
         } else {
@@ -1179,8 +1372,12 @@ export const importarNomina = async (req: Request, res: Response) => {
               total_deductions: totalDeducciones,
               net_pay: item.totalNeto,
               check_number: checkNumber || null,
+              paystub_key: paystubKey,
               payment_date: item.fecha,
-              details: detalles,
+              details: {
+                ...detalles,
+                paystub_key: paystubKey,
+              },
               employee_id: employee.getDataValue('id'),
             },
             { transaction },
@@ -1424,9 +1621,13 @@ export const getRecibosAdmin = async (req: Request, res: Response) => {
         monto: Number(data.net_pay || 0),
         periodo: String(data.pay_period || detalles.periodo_pago || 'Periodo no especificado'),
         estado: String(detalles.status || 'Pagado'),
-        detalles,
+        detalles: {
+          ...detalles,
+          paystub_key: String(data.paystub_key || detalles.paystub_key || ''),
+        },
         employeeId: Number(employeeData?.id || 0),
         quickbooksId: String(employeeData?.quickbooks_id ?? ''),
+        paystubKey: String(data.paystub_key || detalles.paystub_key || ''),
         User: {
           id: Number(userData?.id || 0),
           nombre: nombreEmpleado,

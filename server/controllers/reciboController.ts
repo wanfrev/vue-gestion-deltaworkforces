@@ -33,7 +33,11 @@ const mapPaymentRecordToReciboPayload = (paymentRecordData: Record<string, unkno
     monto: Number(paymentRecordData.net_pay || 0),
     periodo: String(paymentRecordData.pay_period || detalles.periodo_pago || 'Periodo no especificado'),
     estado,
-    detalles,
+    detalles: {
+      ...detalles,
+      paystub_key: String(paymentRecordData.paystub_key || detalles.paystub_key || ''),
+    },
+    paystubKey: String(paymentRecordData.paystub_key || detalles.paystub_key || ''),
     User: {
       id: Number(userData?.id || 0),
       nombre: nombreEmpleado,
