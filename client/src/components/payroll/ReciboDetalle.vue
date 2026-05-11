@@ -64,22 +64,22 @@
         <div class="rounded-xl border border-slate-100 bg-white p-4">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-delta-blue">Earnings</h3>
         <div v-if="earningsRows.length" class="space-y-3 text-sm text-gray-700">
-          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+          <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
+            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 min-w-0">
               <p class="text-xs uppercase tracking-wide text-slate-500">Worked Hours</p>
-              <p class="mt-1 text-lg font-semibold text-slate-900">{{ horasTrabajadas }}</p>
+              <p class="mt-1 text-base font-semibold text-slate-900 break-all">{{ horasTrabajadas }}</p>
             </div>
-            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 min-w-0">
               <p class="text-xs uppercase tracking-wide text-slate-500">Hourly Rate</p>
-              <p class="mt-1 text-lg font-semibold text-slate-900">${{ formatCurrency(pagoHora) }}</p>
+              <p class="mt-1 text-base font-semibold text-slate-900 break-all">${{ formatCurrency(pagoHora) }}</p>
             </div>
-            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 min-w-0">
               <p class="text-xs uppercase tracking-wide text-slate-500">Overtime Hourly Rate</p>
-              <p class="mt-1 text-lg font-semibold text-slate-900">${{ formatCurrency(resolvedOvertimeRate) }}</p>
+              <p class="mt-1 text-base font-semibold text-slate-900 break-all">${{ formatCurrency(resolvedOvertimeRate) }}</p>
             </div>
-            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 min-w-0">
               <p class="text-xs uppercase tracking-wide text-slate-500">Total Paid</p>
-              <p class="mt-1 text-lg font-semibold text-slate-900">${{ formatCurrency(totalPagado) }}</p>
+              <p class="mt-1 text-base font-semibold text-slate-900 break-all">${{ formatCurrency(totalPagado) }}</p>
             </div>
           </div>
 
@@ -110,13 +110,6 @@
             </div>
           </article>
 
-          <article class="rounded-xl border border-rose-100 bg-rose-50 p-4">
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <span class="font-medium text-rose-800">Deductions</span>
-              <span class="text-base font-semibold text-rose-700">- ${{ formatCurrency(deducciones) }}</span>
-            </div>
-          </article>
-
           <article class="rounded-xl border border-emerald-100 bg-emerald-50 p-4 shadow-sm">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <span class="font-medium text-emerald-800">Net Pay</span>
@@ -138,9 +131,6 @@
           <div class="space-y-1 text-sm text-slate-600">
           <p>
             Earnings: <span class="font-semibold text-slate-800">${{ formatCurrency(totalIngresos) }}</span>
-          </p>
-          <p>
-            Deductions: <span class="font-semibold text-slate-800">${{ formatCurrency(deducciones) }}</span>
           </p>
           <p v-if="ytdTotal !== null">
             Year to date (YTD): <span class="font-semibold text-slate-800">${{ formatCurrency(ytdTotal) }}</span>
