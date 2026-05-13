@@ -9,10 +9,10 @@
     ></button>
 
     <aside
-      class="z-50 w-[86vw] max-w-80 border-r border-slate-800/70 bg-linear-to-b from-[#0b1324] via-[#0f172a] to-[#0b1324] text-slate-100 transition-transform duration-200 md:static md:w-80 md:translate-x-0"
-      :class="isMobileOpen ? 'fixed inset-y-0 left-0 translate-x-0' : 'fixed inset-y-0 left-0 -translate-x-full md:translate-x-0'"
+      class="z-50 h-full w-[86vw] max-w-80 border-r border-slate-800/70 bg-linear-to-b from-[#0b1324] via-[#0f172a] to-[#0b1324] text-slate-100 transition-transform duration-200 md:static md:w-80 md:translate-x-0"
+      :class="isMobileOpen ? 'fixed inset-y-0 left-0 translate-x-0' : 'fixed inset-y-0 left-0 -translate-x-full md:relative md:translate-x-0'"
     >
-      <div class="flex h-full flex-col overflow-y-auto px-5 py-6 md:sticky md:top-0 md:px-6">
+      <div class="flex h-full flex-col overflow-y-auto px-5 py-6 md:px-6">
         <div class="mb-5 flex items-center justify-end md:hidden">
           <button
             type="button"

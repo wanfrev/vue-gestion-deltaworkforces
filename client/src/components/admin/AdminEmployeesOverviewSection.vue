@@ -59,14 +59,16 @@
     <div class="mt-4 rounded-xl border border-slate-200 bg-white">
       <div class="hidden grid-cols-[1.8fr_1fr_auto] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 md:grid">
         <p>Employee</p>
-        <p class="text-right">Actions</p>
+        <p class="col-span-2 text-right">
+          {{ empleadosDataGrid.length }} employee{{ empleadosDataGrid.length === 1 ? '' : 's' }}
+        </p>
       </div>
 
-      <div v-if="empleadosDataGrid.length" class="divide-y divide-slate-100 bg-white">
+      <div v-if="empleadosDataGrid.length" class="max-h-[560px] divide-y divide-slate-100 overflow-y-auto bg-white" :title="`Showing ${empleadosDataGrid.length} employees. Scroll to see all.`">
         <div
           v-for="empleado in empleadosDataGrid"
           :key="`empleado-grid-${empleado.employeeId}`"
-          class="grid gap-3 px-4 py-5 transition hover:bg-slate-50 md:grid-cols-[1.8fr_1fr_auto] md:items-center"
+          class="grid gap-3 px-4 py-4 transition hover:bg-slate-50 md:grid-cols-[1.8fr_1fr_auto] md:items-center"
         >
           <div class="flex items-center gap-3">
             <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">

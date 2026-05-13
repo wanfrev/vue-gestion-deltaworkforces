@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen bg-slate-900">
-    <div class="flex min-h-screen flex-col md:flex-row">
+  <div class="h-screen bg-slate-900">
+    <div class="flex h-screen flex-col md:flex-row overflow-hidden">
       <AdminSidebar
         :seccion-activa="seccionActiva"
         :recibos-count="recibosExistentes.length"
@@ -12,7 +12,7 @@
         @logout="logout"
       />
 
-      <main class="flex-1 bg-slate-50 p-4 sm:p-6 md:p-8">
+      <main class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 md:p-8">
         <div class="mx-auto max-w-7xl">
           <div class="mb-4 md:hidden">
             <button
@@ -48,28 +48,8 @@
           />
 
           <section v-else-if="seccionActiva === 'gestionar-empleados'" id="gestionar-empleados" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <AdminEmployeesOverviewSection
-              :search="search"
-              :loading-search="loadingSearch"
-              :empleados-filtrados-count="empleadosFiltrados.length"
-              :empleados-con-registros-count="empleadosConRegistros.length"
-              :fecha-ultima-nomina-label="fechaUltimaNominaLabel"
-              :total-payout-mensual-label="formatMoney(totalPayoutMensual)"
-              :quickbooks-sync-stats="quickbooksSyncStats"
-              :empleados-data-grid="empleadosDataGrid"
-              :menu-empleado-abierto-id="menuEmpleadoAbiertoId"
-              :deleting-employee-id="deletingEmployeeId"
-              @update:search="updateSearch"
-              @search="buscarRecibos"
-              @close-menu="cerrarMenuEmpleado"
-              @toggle-menu="alternarMenuEmpleado"
-              @open-history="abrirHistorialEmpleado"
-              @change-password="solicitarCambioPassword"
-              @delete-records="solicitarEliminarRegistros"
-              @delete-employee="solicitarEliminarEmpleado"
-            />
-
-            <div class="mt-4">
+            <!-- Create User Section - Now at the top -->
+            <div>
               <AdminCreateUserSection
                 :employee-form="employeeForm"
                 :creating-employee="creatingEmployee"
@@ -80,12 +60,37 @@
               />
             </div>
 
+            <!-- Admins and Superadmins List - Now second -->
             <div v-if="isSuperadmin" class="mt-4">
               <AdminPrivilegedUsersSection
                 :users="privilegedUsers"
                 :loading="loadingPrivilegedUsers"
                 :deleting-user-id="deletingPrivilegedUserId"
                 @delete-user="solicitarEliminarPrivilegedUser"
+              />
+            </div>
+
+            <!-- Employee Directory - Now at the bottom -->
+            <div class="mt-4">
+              <AdminEmployeesOverviewSection
+                :search="search"
+                :loading-search="loadingSearch"
+                :empleados-filtrados-count="empleadosFiltrados.length"
+                :empleados-con-registros-count="empleadosConRegistros.length"
+                :fecha-ultima-nomina-label="fechaUltimaNominaLabel"
+                :total-payout-mensual-label="formatMoney(totalPayoutMensual)"
+                :quickbooks-sync-stats="quickbooksSyncStats"
+                :empleados-data-grid="empleadosDataGrid"
+                :menu-empleado-abierto-id="menuEmpleadoAbiertoId"
+                :deleting-employee-id="deletingEmployeeId"
+                @update:search="updateSearch"
+                @search="buscarRecibos"
+                @close-menu="cerrarMenuEmpleado"
+                @toggle-menu="alternarMenuEmpleado"
+                @open-history="abrirHistorialEmpleado"
+                @change-password="solicitarCambioPassword"
+                @delete-records="solicitarEliminarRegistros"
+                @delete-employee="solicitarEliminarEmpleado"
               />
             </div>
           </section>

@@ -14,12 +14,12 @@
       <div class="hidden grid-cols-[1.5fr_auto_auto] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-slate-500 md:grid">
         <p>User</p>
         <p>Role</p>
-        <p class="text-right">Actions</p>
+        <p class="text-right">{{ users.length }} user{{ users.length === 1 ? '' : 's' }}</p>
       </div>
 
       <div v-if="loading" class="p-4 text-sm text-slate-500">Loading users...</div>
 
-      <div v-else-if="users.length" class="divide-y divide-slate-100 bg-white">
+      <div v-else-if="users.length" class="max-h-[400px] divide-y divide-slate-100 overflow-y-auto bg-white">
         <div
           v-for="user in users"
           :key="`privileged-user-${user.id}`"
