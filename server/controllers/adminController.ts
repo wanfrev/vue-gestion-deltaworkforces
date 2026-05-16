@@ -1356,17 +1356,9 @@ export const importarNomina = async (req: Request, res: Response) => {
         })
 
         if (pagoExistente) {
-          pagoExistente.set('net_pay', item.totalNeto)
-          pagoExistente.set('gross_earnings', grossEarnings)
-          pagoExistente.set('total_deductions', totalDeducciones)
-          pagoExistente.set('check_number', checkNumber || null)
-          pagoExistente.set('paystub_key', paystubKey)
-          pagoExistente.set('details', {
-            ...detalles,
-            paystub_key: paystubKey,
-          })
-          await pagoExistente.save({ transaction })
+          // Si el paystub ya existe, se omite (no se sobreescribe ni se suplanta)
           recibosActualizados += 1
+          continue
         } else {
           await PaymentRecord.create(
             {
@@ -1400,7 +1392,7 @@ export const importarNomina = async (req: Request, res: Response) => {
         registrosProcesados: items.length,
         usuariosNuevos,
         recibosCreados,
-        recibosActualizados,
+        recibosIgnoradosPorDuplicado: recibosActualizados, // Muestra los que se ignoraron en lugar de actualizarse
         registrosOmitidos: identificadoresNoEncontrados.size,
       },
       usuariosAutoCreados,
